@@ -227,6 +227,16 @@ code{font-family:var(--f-mono);font-size:.92em}
 .o-tip b{display:block;font-family:var(--f-pixel);font-size:9px;color:var(--pink);margin-bottom:6px;line-height:1.5}
 .o-tip pre{margin:0;background:var(--code-bg);color:var(--code-ink);padding:8px 10px;font:12px/1.5 var(--f-mono);white-space:pre-wrap;overflow-wrap:anywhere}
 @media (max-width:640px){.o-bot{padding:5px}.o-bot canvas{width:36px;height:36px}.o-q-badge{width:18px;height:18px;font-size:9px;top:-8px;left:-8px}}
+/* ---------- célébration ---------- */
+.celeb{position:fixed;inset:0;z-index:30;display:grid;place-items:center;background:rgb(10 11 30 / .45);cursor:pointer;animation:fadein .2s steps(3)}
+.celeb.out{opacity:0;transition:opacity .25s steps(3)}
+.celeb canvas.fw{position:absolute;inset:0;width:100%;height:100%;image-rendering:pixelated;pointer-events:none}
+.ach{position:relative;background:var(--frame);color:var(--edge);padding:clamp(28px,6vw,48px) clamp(24px,7vw,64px);text-align:center;display:flex;flex-direction:column;gap:18px;width:min(560px,calc(100vw - 40px));box-shadow:0 -6px 0 0 var(--edge),0 6px 0 0 var(--edge),-6px 0 0 0 var(--edge),6px 0 0 0 var(--edge),12px 12px 0 0 var(--pink);animation:bump .5s steps(5)}
+.ach .ach-k{font-family:var(--f-pixel);font-size:12px;color:var(--pink);line-height:1.6}
+.ach b{font-family:var(--f-pixel);font-size:clamp(16px,4.2vw,26px);line-height:1.5;color:var(--edge)}
+.ach span:last-child{font:26px/1.2 var(--f-retro);color:#4B4870}
+@keyframes fadein{from{opacity:0}}
+@keyframes bump{0%{transform:scale(.2)}60%{transform:scale(1.12)}100%{transform:scale(1)}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 @media (max-width:640px){.levels{margin-left:0;width:100%}.pips{flex:1}.pip{flex:1;width:auto}}
 </style>
@@ -1088,7 +1098,7 @@ async function checkSucces(){
   for (const s of CAT.succes){
     if (G.succes.includes(s.code)) continue;
     const cond = SUCCES_COND[s.code]; if (!cond || !cond(G)) continue;
-    try { await db.query('insert into succes_obtenu(partie_id, succes_code) values($1, $2)', [G.partieId, s.code]); G.succes.push(s.code); toast('★ ' + s.nom, s.description); renderSucces(); }
+    try { await db.query('insert into succes_obtenu(partie_id, succes_code) values($1, $2)', [G.partieId, s.code]); G.succes.push(s.code); celebrate(s.nom, s.description); renderSucces(); }
     catch(e){
       // Si c'est un doublon, le succès est déjà en base : on l'affiche. Sinon on montre l'erreur de la base.
       if (e.code === '23505'){ G.succes.push(s.code); renderSucces(); }
@@ -1390,6 +1400,41 @@ function spawnBug(){
   b.addEventListener('click', () => { const gain = Math.max(25, Math.floor(perSec() * 45), perClick() * 15); G.lignes += gain; G.total += gain; toast('GÉRARD ATTRAPÉ !', `+${fmt(gain)} lignes`); b.remove(); tickUI(); });
   z.appendChild(b); setTimeout(() => b.remove(), 7000);
 }
+/* ---------------- célébration d'un succès : carte au centre + feu d'artifice pixel ---------------- */
+const celebQueue = []; let celebrating = false;
+function celebrate(title, text){ celebQueue.push([title, text]); if (!celebrating) nextCelebration(); }
+function nextCelebration(){
+  const item = celebQueue.shift(); if (!item){ celebrating = false; return; }
+  celebrating = true;
+  const [title, text] = item;
+  const wrap = document.createElement('div'); wrap.className = 'celeb'; wrap.setAttribute('role', 'status');
+  wrap.innerHTML = `<canvas class="fw"></canvas><div class="ach px"><span class="ach-k">★ SUCCÈS DÉBLOQUÉ ★</span><b>${esc(title)}</b><span>${esc(text)}</span></div>`;
+  document.body.appendChild(wrap);
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let stop = false;
+  const close = () => { if (stop) return; stop = true; wrap.classList.add('out'); setTimeout(() => { wrap.remove(); nextCelebration(); }, 250); };
+  wrap.addEventListener('click', close); setTimeout(close, 3200);
+  if (reduce) return;
+  const cv = wrap.querySelector('canvas'), PX = 5;
+  const W = cv.width = Math.ceil(innerWidth / PX), H = cv.height = Math.ceil(innerHeight / PX);
+  const c = cv.getContext('2d');
+  const COLS = ['#FFD23F', '#FF4D8D', '#3EDBF0', '#5BE37D', '#FF9F43', '#FFFFFF'];
+  const parts = [];
+  const burst = () => {
+    const x = W * (0.15 + Math.random() * 0.7), y = H * (0.12 + Math.random() * 0.35), col = COLS[Math.floor(Math.random() * COLS.length)];
+    for (let i = 0; i < 36; i++){ const a = (i / 36) * Math.PI * 2, v = 0.6 + Math.random() * 0.9; parts.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: 40 + Math.random() * 25, col }); }
+  };
+  burst(); let t = 0;
+  (function frame(){
+    if (stop) return;
+    t++; if (t % 14 === 0 && t < 120) burst();
+    c.clearRect(0, 0, W, H);
+    for (const p of parts){ if (p.life <= 0) continue; p.x += p.vx; p.y += p.vy; p.vy += 0.025; p.vx *= 0.985; p.life--;
+      c.fillStyle = p.life < 12 && (t % 4 < 2) ? '#FFFFFF' : p.col; c.fillRect(Math.round(p.x), Math.round(p.y), 1, 1); }
+    requestAnimationFrame(frame);
+  })();
+}
+
 function toast(title, text){
   const t = document.createElement('div'); t.className = 'toast'; t.innerHTML = `<b>${esc(title)}</b>${esc(text || '')}`;
   $('#toasts').appendChild(t); setTimeout(() => t.remove(), 4500);

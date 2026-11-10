@@ -1055,7 +1055,7 @@ async function resumePartie(pid){
 async function quit(){ await save(); playing = false; pickPlayer = null; G = BLANK(); store.del('sc_game'); renderGame(); }
 
 async function save(){
-  if (!playing || !has(2) || !G.partieId) return;
+  if (!playing || !has(2) || !G.partieId || running) return;
   try {
     await db.query('update partie set lignes_code = $1, total_lignes = $2, nb_clics = $3 where id = $4', [Math.floor(G.lignes), Math.floor(G.total), G.clics, G.partieId]);
     saveInfo = '💾 Sauvegardé à ' + new Date().toLocaleTimeString('fr-FR');
@@ -1094,8 +1094,14 @@ async function tryLocked(kind){
   setCrash(show, 'ERROR: ' + (m || "la table existe mais n'est pas encore conforme au cahier des charges"));
 }
 let succesFail = new Set();
+let checkingSucces = false;
 async function checkSucces(){
-  if (!playing || !has(7) || !G.partieId) return;
+  // jamais pendant l'exécution du script (les tests ouvrent des transactions annulées ensuite)
+  if (!playing || !has(7) || !G.partieId || running || checkingSucces) return;
+  checkingSucces = true;
+  try { await checkSuccesNow(); } finally { checkingSucces = false; }
+}
+async function checkSuccesNow(){
   for (const s of CAT.succes){
     if (G.succes.includes(s.code)) continue;
     const cond = SUCCES_COND[s.code]; if (!cond || !cond(G)) continue;
@@ -1465,8 +1471,9 @@ setInterval(() => {
   tickUI();
 }, 100);
 setInterval(async () => {
+  if (running) return;
   await save();
-  if (has(2) && booted){ for (const r of RIVALS) if (r.rate) await attempt0('update partie p set total_lignes = p.total_lignes + $1, lignes_code = p.lignes_code + $1 from joueur j where j.id = p.joueur_id and j.pseudo = $2 and p.nom_startup = $3', [r.rate * 3, r.pseudo, r.startup]); }
+  if (has(2) && booted && !running){ for (const r of RIVALS) if (r.rate) await attempt0('update partie p set total_lignes = p.total_lignes + $1, lignes_code = p.lignes_code + $1 from joueur j where j.id = p.joueur_id and j.pseudo = $2 and p.nom_startup = $3', [r.rate * 3, r.pseudo, r.startup]); }
   if (has(2)) renderHall();
 }, 3000);
 setInterval(() => {

@@ -228,7 +228,7 @@ code{font-family:var(--f-mono);font-size:.92em}
 .o-tip pre{margin:0;background:var(--code-bg);color:var(--code-ink);padding:8px 10px;font:12px/1.5 var(--f-mono);white-space:pre-wrap;overflow-wrap:anywhere}
 @media (max-width:640px){.o-bot{padding:5px}.o-bot canvas{width:36px;height:36px}.o-q-badge{width:18px;height:18px;font-size:9px;top:-8px;left:-8px}}
 /* ---------- célébration ---------- */
-.celeb{position:fixed;inset:0;z-index:30;display:grid;place-items:center;background:rgb(10 11 30 / .45);cursor:pointer;animation:fadein .2s steps(3)}
+.celeb{position:fixed;inset:0;z-index:30;display:grid;place-items:center;background:rgb(10 11 30 / .35);pointer-events:none;animation:fadein .2s steps(3)}
 .celeb.out{opacity:0;transition:opacity .25s steps(3)}
 .celeb canvas.fw{position:absolute;inset:0;width:100%;height:100%;image-rendering:pixelated;pointer-events:none}
 .ach{position:relative;background:var(--frame);color:var(--edge);padding:clamp(28px,6vw,48px) clamp(24px,7vw,64px);text-align:center;display:flex;flex-direction:column;gap:18px;width:min(560px,calc(100vw - 40px));box-shadow:0 -6px 0 0 var(--edge),0 6px 0 0 var(--edge),-6px 0 0 0 var(--edge),6px 0 0 0 var(--edge),12px 12px 0 0 var(--pink);animation:bump .5s steps(5)}
@@ -875,7 +875,8 @@ async function runScript(){
   await resync();
   if (booted && LEVEL > before){
     setMood('happy', 6000);
-    for (let k = before; k < LEVEL; k++) toast(`ÉTAPE ${k + 1} VALIDÉE`, LEVELS[k].unlock);
+    if (LEVEL - before === 1) celebrate(LEVELS[before].titre, LEVELS[before].unlock, `★ ÉTAPE ${LEVEL} VALIDÉE ★`);
+    else celebrate(`${LEVEL - before} étapes d'un coup !`, LEVELS.slice(before, LEVEL).map(L => L.titre).join(' · '), '★ ÉTAPES VALIDÉES ★');
   }
   renderAll();
   btn.disabled = false; btn.textContent = 'EXÉCUTER ▶'; running = false;
@@ -1400,20 +1401,35 @@ function spawnBug(){
   b.addEventListener('click', () => { const gain = Math.max(25, Math.floor(perSec() * 45), perClick() * 15); G.lignes += gain; G.total += gain; toast('GÉRARD ATTRAPÉ !', `+${fmt(gain)} lignes`); b.remove(); tickUI(); });
   z.appendChild(b); setTimeout(() => b.remove(), 7000);
 }
+/* ---------------- la police pixel n'a pas de majuscules accentuées : É → E, etc. ---------------- */
+const PX_FIX = { 'É':'E','È':'E','Ê':'E','Ë':'E','À':'A','Â':'A','Ç':'C','Ô':'O','Î':'I','Ï':'I','Û':'U','Ù':'U' };
+const pxCache = new WeakMap();
+const isPixel = el => { if (!el) return false; if (!pxCache.has(el)) pxCache.set(el, /Press Start/.test(getComputedStyle(el).fontFamily)); return pxCache.get(el); };
+function fixPixel(root){
+  const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  for (let n = w.nextNode(); n; n = w.nextNode()){
+    if (/[ÉÈÊËÀÂÇÔÎÏÛÙ]/.test(n.data) && isPixel(n.parentElement)) n.data = n.data.replace(/[ÉÈÊËÀÂÇÔÎÏÛÙ]/g, c => PX_FIX[c]);
+  }
+}
+new MutationObserver(ms => { for (const m of ms){ if (m.type === 'characterData') fixPixel(m.target.parentElement || document.body); else m.addedNodes.forEach(n => n.nodeType === 1 ? fixPixel(n) : n.nodeType === 3 && fixPixel(n.parentElement || document.body)); } })
+  .observe(document.body, { childList: true, subtree: true, characterData: true });
+document.fonts?.ready?.then(() => fixPixel(document.body));
+fixPixel(document.body);
+
 /* ---------------- célébration d'un succès : carte au centre + feu d'artifice pixel ---------------- */
 const celebQueue = []; let celebrating = false;
-function celebrate(title, text){ celebQueue.push([title, text]); if (!celebrating) nextCelebration(); }
+function celebrate(title, text, kicker = '★ SUCCÈS DÉBLOQUÉ ★'){ celebQueue.push([title, text, kicker]); if (!celebrating) nextCelebration(); }
 function nextCelebration(){
   const item = celebQueue.shift(); if (!item){ celebrating = false; return; }
   celebrating = true;
-  const [title, text] = item;
+  const [title, text, kicker] = item;
   const wrap = document.createElement('div'); wrap.className = 'celeb'; wrap.setAttribute('role', 'status');
-  wrap.innerHTML = `<canvas class="fw"></canvas><div class="ach px"><span class="ach-k">★ SUCCÈS DÉBLOQUÉ ★</span><b>${esc(title)}</b><span>${esc(text)}</span></div>`;
+  wrap.innerHTML = `<canvas class="fw"></canvas><div class="ach px"><span class="ach-k">${esc(kicker)}</span><b>${esc(title)}</b><span>${esc(text)}</span></div>`;
   document.body.appendChild(wrap);
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
   let stop = false;
   const close = () => { if (stop) return; stop = true; wrap.classList.add('out'); setTimeout(() => { wrap.remove(); nextCelebration(); }, 250); };
-  wrap.addEventListener('click', close); setTimeout(close, 3200);
+  setTimeout(close, 3500);   // reste affichée 3,5 s ; les clics passent au travers (on peut continuer à coder)
   if (reduce) return;
   const cv = wrap.querySelector('canvas'), PX = 5;
   const W = cv.width = Math.ceil(innerWidth / PX), H = cv.height = Math.ceil(innerHeight / PX);

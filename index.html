@@ -516,7 +516,7 @@ const SUCCES = [
 ];
 const ICON = Object.fromEntries(BATS.map(b => [norm(b[0]), b[3]]));
 const SUCCES_COND = {
-  HELLO_WORLD: g => g.total >= 1,
+  HELLO_WORLD: g => g.total >= 1 || g.clics >= 1,
   TENDINITE: g => g.clics >= 100,
   CA_COMPILE: g => g.total >= 1000,
   PREMIER_STAGIAIRE: g => (g.owned[norm('Stagiaire')] || 0) >= 1,
@@ -993,7 +993,7 @@ async function resync(){
 /* ---------------- calculs ---------------- */
 const mult = key => CAT.amels.filter(a => G.upgrades.includes(a.key) && a.batKey === key).reduce((m, a) => m * a.multiplicateur, 1);
 const perClick = () => has(6) ? mult(null) : 1;
-const perSec = () => has(5) ? CAT.bats.reduce((s, b) => s + b.production * (G.owned[b.key] || 0) * mult(b.key), 0) : 0;
+const perSec = () => { if (!has(5)) return 0; const v = CAT.bats.reduce((s, b) => s + (Number(b.production) || 0) * (Number(G.owned[b.key]) || 0) * mult(b.key), 0); return Number.isFinite(v) ? v : 0; };
 const price = b => Math.ceil(b.cout_base * Math.pow(1.15, G.owned[b.key] || 0));
 function fmt(n, dec = 0){
   n = Number(n) || 0;
@@ -1046,7 +1046,7 @@ async function resumePartie(pid){
   const p = await one('select * from partie where id = $1', [pid]); if (!p) return;
   const j = await one('select id, pseudo from joueur where id = $1', [p.joueur_id]);
   G = BLANK(); G.pseudo = j.pseudo; G.joueurId = j.id; G.partieId = p.id; G.nomStartup = p.nom_startup;
-  G.lignes = Number(p.lignes_code); G.total = Number(p.total_lignes); G.clics = Number(p.nb_clics);
+  G.lignes = Number(p.lignes_code) || 0; G.total = Number(p.total_lignes) || 0; G.clics = Number(p.nb_clics) || 0;
   if (has(5)) for (const r of (await attempt0('select b.nom, po.quantite from possession po join batiment b on b.id = po.batiment_id where po.partie_id = $1', [pid])) || []) G.owned[norm(r.nom)] = Number(r.quantite);
   if (has(6)) for (const r of (await attempt0('select a.nom from amelioration_achetee aa join amelioration a on a.id = aa.amelioration_id where aa.partie_id = $1', [pid])) || []) G.upgrades.push(norm(r.nom));
   if (has(7)) for (const r of (await attempt0('select succes_code from succes_obtenu where partie_id = $1', [pid])) || []) G.succes.push(r.succes_code);
@@ -1467,6 +1467,10 @@ let lastT = performance.now();
 setInterval(() => {
   const now = performance.now(); const dt = (now - lastT) / 1000; lastT = now;
   if (!playing) return;
+  // garde-fou : un compteur ne doit jamais devenir NaN (sinon les succès basés sur le total ne se débloquent plus)
+  if (!Number.isFinite(G.lignes)) G.lignes = 0;
+  if (!Number.isFinite(G.clics)) G.clics = 0;
+  if (!Number.isFinite(G.total) || G.total < G.clics) G.total = Math.max(Number.isFinite(G.total) ? G.total : 0, G.lignes, G.clics);
   const g = perSec() * dt; if (g > 0){ G.lignes += g; G.total += g; if (Math.random() < dt * Math.min(6, perSec())) typeCode(1); }
   tickUI();
 }, 100);

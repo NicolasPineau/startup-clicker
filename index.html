@@ -1,4 +1,5 @@
-<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>[hidden]{display:none!important}body{margin:0}</style>
 <title>Startup Clicker</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -153,7 +154,7 @@ input[type=text]{font:22px var(--f-retro);padding:8px 10px;border:0;background:v
 .modebar button{border:0;background:var(--panel);color:var(--muted);font-family:var(--f-pixel);font-size:9px;padding:8px 10px}
 .modebar button[aria-pressed="true"]{background:var(--cyan);color:var(--edge)}
 .editor{display:flex;align-items:stretch;background:var(--code-bg);overflow:hidden;height:max(360px,calc(100vh - 250px));height:max(360px,calc(100dvh - 250px))}
-.gutter{padding:12px 8px 12px 10px;color:var(--dim);font:13px/1.6 var(--f-mono);text-align:right;user-select:none;white-space:pre;overflow:hidden;min-width:44px;height:100%;flex:none;border-right:2px solid var(--panel)}
+.gutter{padding:12px 8px 60px 10px;color:var(--dim);font:13px/1.6 var(--f-mono);text-align:right;user-select:none;white-space:pre;overflow:hidden;min-width:44px;height:100%;flex:none;border-right:2px solid var(--panel)}
 textarea#sql{flex:1;min-width:0;height:100%;resize:none;border:0;outline:none;background:var(--code-bg);color:var(--code-ink);font:13px/1.6 var(--f-mono);padding:12px;tab-size:2;white-space:pre;overflow:auto}
 .editor:focus-within{box-shadow:0 0 0 3px var(--yellow)}
 .toolbar{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-top:16px}
@@ -225,6 +226,7 @@ code{font-family:var(--f-mono);font-size:.92em}
 .o-tip{margin-top:10px}
 .o-tip b{display:block;font-family:var(--f-pixel);font-size:9px;color:var(--pink);margin-bottom:6px;line-height:1.5}
 .o-tip pre{margin:0;background:var(--code-bg);color:var(--code-ink);padding:8px 10px;font:12px/1.5 var(--f-mono);white-space:pre-wrap;overflow-wrap:anywhere}
+@media (max-width:640px){.o-bot{padding:5px}.o-bot canvas{width:36px;height:36px}.o-q-badge{width:18px;height:18px;font-size:9px;top:-8px;left:-8px}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 @media (max-width:640px){.levels{margin-left:0;width:100%}.pips{flex:1}.pip{flex:1;width:auto}}
 </style>
@@ -1140,7 +1142,7 @@ function renderKevin(){
 
 /* ---------------- rendu : jauge ---------------- */
 function renderLevels(){
-  $('#lvl-label').textContent = LEVEL >= LEVELS.length ? 'TERMINÉ !' : `ÉTAPE ${LEVEL + 1}/${LEVELS.length}`;
+  $('#lvl-label').textContent = LEVEL >= LEVELS.length ? 'FINI !' : `ÉTAPE ${LEVEL + 1}/${LEVELS.length}`;
   $('#pips').innerHTML = LEVELS.map((L, i) => `<span class="pip ${i < LEVEL ? 'done' : i === LEVEL ? 'cur' : ''}" title="${i < LEVEL ? esc(L.titre) : 'Étape ' + (i + 1)}"></span>`).join('');
 }
 
@@ -1244,6 +1246,7 @@ function typeCode(n){
     term.cur += term.src[term.pos++];
   }
   const el = $('#term'); if (el) el.innerHTML = term.lines.map(l => `<span class="old">${esc(l)}</span>`).join('\n') + (term.lines.length ? '\n' : '') + esc(term.cur) + '<span class="caret"></span>';
+  if (el) el.scrollTop = el.scrollHeight;   // toujours afficher la dernière ligne tapée
 }
 
 function renderAll(){ renderLevels(); renderConsole(); renderGame(); renderOctet(); }
@@ -1437,6 +1440,7 @@ const ta = $('#sql'), gut = $('#gutter');
 function gutter(){ const n = ta.value.split('\n').length; let s = ''; for (let i = 1; i <= n; i++) s += i + '\n'; gut.textContent = s; gut.scrollTop = ta.scrollTop; }
 ta.addEventListener('input', () => { gutter(); store.set('sc_script', ta.value); });
 ta.addEventListener('scroll', () => { gut.scrollTop = ta.scrollTop; });
+gut.addEventListener('wheel', e => { ta.scrollTop += e.deltaY; e.preventDefault(); }, { passive: false });
 ta.addEventListener('keydown', e => { if (e.key === 'Tab' && !e.shiftKey){ e.preventDefault(); ta.setRangeText('  ', ta.selectionStart, ta.selectionEnd, 'end'); gutter(); } });
 $('#run').addEventListener('click', runScript);
 function setMode(m){ MODE = m; store.set('sc_mode', m); document.querySelectorAll('[data-mode]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.mode === m))); if (lastReport) renderConsole(); if (booted) renderOctet(); }
@@ -1550,7 +1554,9 @@ function renderOctet(){
   if (octetOpen){
     const O = OCTET[k];
     let body;
-    if (solved){
+    if (LEVEL >= LEVELS.length){
+      body = `<p class="o-say">Bip bip ! Tu as validé toutes les étapes : plus besoin de moi. Bravo !</p>`;
+    } else if (solved){
       body = `<p class="o-say">Bien joué ! Voici la syntaxe qui va t'aider pour l'étape ${k + 1}${isMy() ? ' (MySQL)' : ' (PostgreSQL)'}. Les exemples ne parlent pas de ton jeu : à toi de les adapter.</p>` +
         O.tips().map(([t, code]) => `<div class="o-tip"><b>${esc(t)}</b><pre>${esc(code)}</pre></div>`).join('');
     } else {
@@ -1569,7 +1575,7 @@ document.addEventListener('click', async e => {
   const t = e.target.closest('#octet button'); if (!t) return;
   if (t.hasAttribute('data-otoggle')){ octetOpen = !octetOpen; renderOctet(); return; }
   if (t.hasAttribute('data-oclose')){ octetOpen = false; renderOctet(); return; }
-  if (t.dataset.oans !== undefined){
+  if (t.dataset.oans !== undefined && LEVEL < LEVELS.length){
     const k = Math.min(LEVEL, OCTET.length - 1);
     if (octetShuffle[k][Number(t.dataset.oans)] === OCTET[k].ok){ if (!SCORE.tips.includes(k)) SCORE.tips.push(k); toast(`−${PTS.tip} POINTS`, "Astuce débloquée."); }
     else { SCORE.wrong++; SCORE.sulk = Date.now() + 30000; octetShuffle[k] = null; toast(`−${PTS.wrong} POINTS`, 'Mauvaise réponse.'); }
@@ -1672,5 +1678,4 @@ window.addEventListener('hashchange', async () => { if (!(await renderProf())) s
 
 boot().then(() => renderProf());
 </script>
-
-</body></html>
+</html>

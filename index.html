@@ -1,0 +1,1676 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Startup Clicker</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&family=IBM+Plex+Sans:ital,wght@0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout : barre fixe façon menu de jeu 16 bits, puis un écran à la fois (jeu / console / cahier).
+   Look unique assumé (rétro sombre), le cahier des charges est une « feuille » claire posée dessus. */
+:root{
+  color-scheme:dark;
+  --bg:#15163A; --bg2:#1E2050; --panel:#262A66; --panel2:#30357D; --edge:#0A0B1E; --frame:#E9E7FF;
+  --ink:#F4F2FF; --muted:#A9A8D8; --dim:#6E6FA8;
+  --yellow:#FFD23F; --pink:#FF4D8D; --cyan:#3EDBF0; --green:#5BE37D; --red:#FF5A5A; --orange:#FF9F43;
+  --paper:#F6F1E3; --paper-ink:#25223A; --paper-line:#D9D0B8; --paper-accent:#3B3FB8;
+  --code-bg:#0D0E26; --code-ink:#E8E6FF;
+  --f-pixel:"Press Start 2P", "Courier New", monospace;
+  --f-retro:"VT323", "Courier New", monospace;
+  --f-body:"IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono:"JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+  --px:4px;
+}
+*{box-sizing:border-box}
+html,body{min-height:100%}
+body{background:var(--bg);color:var(--ink);font:15px/1.5 var(--f-body);
+  background-image:linear-gradient(var(--bg2) 1px, transparent 1px),linear-gradient(90deg,var(--bg2) 1px, transparent 1px);background-size:32px 32px}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--edge)}
+button{font:inherit;color:inherit;cursor:pointer}
+:focus-visible{outline:3px solid var(--yellow);outline-offset:3px}
+.wrap{max-width:1280px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+h1,h2,h3{margin:0;line-height:1.3;text-wrap:balance}
+.num{font-variant-numeric:tabular-nums}
+/* cadre pixel : coins crantés */
+.px{box-shadow:0 calc(-1*var(--px)) 0 0 var(--edge),0 var(--px) 0 0 var(--edge),calc(-1*var(--px)) 0 0 0 var(--edge),var(--px) 0 0 0 var(--edge)}
+
+/* ---------- barre du haut ---------- */
+header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--edge);border-bottom:4px solid var(--panel2)}
+.top-row{display:flex;align-items:center;gap:18px;flex-wrap:wrap;padding-block:12px}
+.brand{font-family:var(--f-pixel);font-size:14px;color:var(--yellow);text-shadow:3px 3px 0 var(--pink);letter-spacing:.02em;white-space:nowrap}
+nav.tabs{display:flex;gap:10px;flex-wrap:wrap}
+nav.tabs button{border:0;background:var(--panel);padding:9px 12px;font-family:var(--f-pixel);font-size:10px;color:var(--muted)}
+nav.tabs button[aria-selected="true"]{background:var(--yellow);color:var(--edge)}
+.levels{margin-left:auto;display:flex;align-items:center;gap:10px;min-width:0}
+.levels .lbl{font-family:var(--f-pixel);font-size:9px;color:var(--muted);white-space:nowrap}
+.pips{display:flex;gap:4px}
+.pip{width:18px;height:18px;background:var(--panel);box-shadow:inset 0 0 0 3px var(--edge)}
+.pip.done{background:var(--green)}
+.pip.cur{background:var(--yellow);animation:pulse 1s steps(2) infinite}
+@keyframes pulse{50%{background:var(--orange)}}
+main{padding-block:26px 70px}
+section.tab[hidden]{display:none}
+
+/* ---------- Kevin (tuto) ---------- */
+.kevin{display:grid;grid-template-columns:auto minmax(0,1fr);gap:18px;align-items:start;background:var(--panel);padding:16px 18px;margin-bottom:26px}
+.kevin canvas{width:112px;height:112px;image-rendering:pixelated;display:block;background:var(--bg2)}
+.kevin .who{font-family:var(--f-pixel);font-size:9px;color:var(--cyan);margin-top:8px;text-align:center}
+.bubble{background:var(--frame);color:var(--edge);padding:12px 16px;position:relative;font:21px/1.15 var(--f-retro);min-width:0}
+.bubble::before{content:"";position:absolute;left:-12px;top:22px;border:6px solid transparent;border-right-color:var(--frame);border-top-color:var(--frame)}
+.bubble .step{font-family:var(--f-pixel);font-size:9px;color:var(--pink);display:block;margin-bottom:8px}
+.bubble p{margin:0 0 8px}
+.bubble code{font-family:var(--f-mono);font-size:14px;background:rgb(0 0 0 / .08);padding:0 4px}
+.bubble .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
+.bubble .crashmsg{font:13px/1.45 var(--f-mono);background:var(--edge);color:var(--red);padding:8px 10px;margin:6px 0 8px;overflow-wrap:anywhere}
+.kevin.compact{grid-template-columns:auto minmax(0,1fr);margin-bottom:0}
+.kevin.compact canvas{width:72px;height:72px}
+.kevin.compact .bubble{font-size:19px}
+@media (max-width:560px){.kevin{grid-template-columns:1fr}.bubble::before{display:none}.kevin canvas{width:80px;height:80px}}
+
+/* ---------- boutons pixel ---------- */
+.pbtn{border:0;background:var(--yellow);color:var(--edge);font-family:var(--f-pixel);font-size:10px;padding:10px 14px;box-shadow:0 4px 0 0 #B8921B;position:relative;top:0}
+.pbtn:active{top:3px;box-shadow:0 1px 0 0 #B8921B}
+.pbtn.alt{background:var(--cyan);box-shadow:0 4px 0 0 #1F98A8}
+.pbtn.ghost{background:var(--panel2);color:var(--ink);box-shadow:0 4px 0 0 var(--edge)}
+.pbtn:disabled{opacity:.45;cursor:not-allowed}
+.linkbtn{border:0;background:none;color:var(--cyan);padding:0;text-decoration:underline;text-underline-offset:3px;font:inherit}
+
+/* ---------- jeu ---------- */
+.retro{font:20px/1.2 var(--f-retro)}
+.game{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:26px;align-items:start}
+@media (max-width:900px){.game{grid-template-columns:1fr}}
+.panel{background:var(--panel);padding:16px 18px}
+.panel h2{font-family:var(--f-pixel);font-size:12px;color:var(--yellow);display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:14px}
+.panel h2 small{font-family:var(--f-retro);font-size:18px;color:var(--muted)}
+.stack{display:flex;flex-direction:column;gap:26px;min-width:0}
+.hud .startup{font-family:var(--f-pixel);font-size:15px;line-height:1.5;color:var(--ink);overflow-wrap:anywhere}
+.hud .player{color:var(--muted)}
+.count{font-family:var(--f-pixel);font-size:clamp(22px,4.4vw,34px);color:var(--yellow);text-shadow:3px 3px 0 var(--edge);margin-top:16px}
+.count-sub{color:var(--muted);display:flex;gap:16px;flex-wrap:wrap;margin-top:6px}
+.clickzone{position:relative;margin-top:18px;display:grid;place-items:center;padding:16px 0 12px;user-select:none;min-height:200px}
+.bigkey{width:min(230px,66vw);aspect-ratio:1.3;border:0;background:var(--pink);color:var(--ink);font-family:var(--f-pixel);font-size:18px;box-shadow:inset -8px -8px 0 0 #B8245C,inset 8px 8px 0 0 #FF8AB5,0 10px 0 0 var(--edge);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;position:relative;top:0}
+.bigkey span{font-family:var(--f-retro);font-size:20px}
+.bigkey:active,.bigkey.press{top:6px;box-shadow:inset -8px -8px 0 0 #B8245C,inset 8px 8px 0 0 #FF8AB5,0 4px 0 0 var(--edge)}
+.floater{position:absolute;pointer-events:none;font-family:var(--f-pixel);color:var(--yellow);font-size:14px;text-shadow:2px 2px 0 var(--edge);animation:float 900ms steps(9) forwards}
+@keyframes float{from{opacity:1;transform:translateY(0)}to{opacity:0;transform:translateY(-72px)}}
+.bug{position:absolute;font-size:34px;border:0;background:transparent;animation:wiggle .4s steps(2) infinite;z-index:2;padding:4px}
+@keyframes wiggle{from{transform:translateX(-4px)}to{transform:translateX(4px)}}
+.term{margin-top:14px;background:var(--code-bg);color:var(--green);padding:10px 12px;font:12px/1.55 var(--f-mono);height:140px;overflow:hidden;white-space:pre-wrap;overflow-wrap:anywhere}
+.term .old{color:var(--dim)}
+.term .caret{display:inline-block;width:7px;height:13px;background:var(--green);vertical-align:-2px;animation:blink 1s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+.savebar{margin-top:12px;color:var(--muted);display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.shop{display:flex;flex-direction:column;gap:10px}
+.item{display:grid;grid-template-columns:40px minmax(0,1fr) auto;gap:12px;align-items:center;padding:8px 12px;border:0;background:var(--panel2);text-align:left;width:100%;box-shadow:0 4px 0 0 var(--edge)}
+.item:not(:disabled):hover{background:#3A40A0}
+.item:disabled{cursor:not-allowed;opacity:.5}
+.item .ic{font-size:28px;text-align:center}
+.item .nm{color:var(--ink)}
+.item .ds{font-size:17px;color:var(--muted);display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.item .pr{text-align:right;color:var(--yellow)}
+.item .qty{font-family:var(--f-pixel);font-size:16px;color:var(--cyan);min-width:36px;text-align:right}
+.chips{display:flex;flex-wrap:wrap;gap:10px}
+.chip{border:0;background:var(--panel2);padding:8px 10px;text-align:left;max-width:100%;box-shadow:0 4px 0 0 var(--edge);color:var(--muted)}
+.chip b{display:block;color:var(--ink);font-weight:400}
+.chip:disabled{opacity:.5;cursor:not-allowed}
+.chip.owned{background:#1F5E3A;cursor:default}
+.badges{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px}
+.badge{padding:8px 10px;background:var(--bg2);color:var(--dim)}
+.badge b{display:block;color:var(--muted);font-weight:400}
+.badge.got{background:#1F5E3A;color:#BDF5CC}
+.badge.got b{color:var(--yellow)}
+.badge.got b::before{content:"★ "}
+table.grid{width:100%;border-collapse:collapse}
+table.grid th,table.grid td{text-align:left;padding:5px 8px;border-bottom:2px solid var(--bg2);vertical-align:top}
+table.grid th{font-family:var(--f-pixel);font-size:8px;color:var(--cyan);font-weight:400}
+table.grid td.r,table.grid th.r{text-align:right}
+table.grid tr.me td{background:var(--yellow);color:var(--edge)}
+table.grid .rank1 td:first-child{color:var(--yellow)}
+.null{color:var(--dim);font-style:italic}
+.scroll-x{overflow-x:auto}
+.crash{font:13px/1.5 var(--f-mono);background:var(--edge);color:var(--red);padding:10px 12px;overflow-wrap:anywhere}
+.crash b{color:var(--ink)}
+.trybox{display:flex;flex-direction:column;gap:10px;align-items:flex-start}
+.trybox p{margin:0;color:var(--muted)}
+.start{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:26px;align-items:start}
+@media (max-width:820px){.start{grid-template-columns:1fr}}
+form.newgame{display:flex;flex-direction:column;gap:14px}
+label.f{display:flex;flex-direction:column;gap:4px}
+label.f small{color:var(--muted)}
+input[type=text]{font:22px var(--f-retro);padding:8px 10px;border:0;background:var(--edge);color:var(--ink);box-shadow:inset 0 0 0 2px var(--panel2)}
+.players{display:flex;flex-direction:column;gap:8px;max-height:260px;overflow:auto;padding:2px}
+.players button{display:flex;justify-content:space-between;gap:10px;border:0;background:var(--panel2);padding:6px 10px;text-align:left}
+.players button:hover{background:#3A40A0}
+.players small{color:var(--muted)}
+.toasts{position:fixed;right:max(16px,env(safe-area-inset-right,0px));top:calc(84px + env(safe-area-inset-top,0px));display:flex;flex-direction:column;gap:10px;z-index:20;max-width:min(360px,calc(100vw - 32px))}
+.toast{background:var(--frame);color:var(--edge);padding:10px 14px;font:20px/1.15 var(--f-retro);box-shadow:6px 6px 0 0 var(--edge);animation:pop .2s steps(3)}
+.toast b{display:block;font-family:var(--f-pixel);font-size:10px;color:var(--pink);margin-bottom:6px;line-height:1.5}
+@keyframes pop{from{transform:translateY(14px);opacity:0}}
+
+/* ---------- console SQL ---------- */
+.console{display:grid;grid-template-columns:minmax(0,7fr) minmax(0,5fr);gap:26px;align-items:start}
+@media (max-width:980px){.console{grid-template-columns:1fr}}
+.modebar{display:flex;align-items:center;gap:8px;margin-bottom:14px;font-size:14px;color:var(--muted)}
+.modebar button{border:0;background:var(--panel);color:var(--muted);font-family:var(--f-pixel);font-size:9px;padding:8px 10px}
+.modebar button[aria-pressed="true"]{background:var(--cyan);color:var(--edge)}
+.editor{display:flex;align-items:stretch;background:var(--code-bg);overflow:hidden;height:max(360px,calc(100vh - 250px));height:max(360px,calc(100dvh - 250px))}
+.gutter{padding:12px 8px 12px 10px;color:var(--dim);font:13px/1.6 var(--f-mono);text-align:right;user-select:none;white-space:pre;overflow:hidden;min-width:44px;height:100%;flex:none;border-right:2px solid var(--panel)}
+textarea#sql{flex:1;min-width:0;height:100%;resize:none;border:0;outline:none;background:var(--code-bg);color:var(--code-ink);font:13px/1.6 var(--f-mono);padding:12px;tab-size:2;white-space:pre;overflow:auto}
+.editor:focus-within{box-shadow:0 0 0 3px var(--yellow)}
+.toolbar{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-top:16px}
+.toolbar .hint{font-size:13px;color:var(--muted);flex:1;min-width:220px}
+.out{margin-top:16px;display:flex;flex-direction:column;gap:10px}
+.okline{background:#1F5E3A;color:#BDF5CC;padding:8px 12px;font-size:14px}
+.err{background:#5A1E2C;color:#FFC9CF;padding:8px 12px;font-size:14px;overflow-wrap:anywhere}
+.note{font-size:13px;color:var(--muted);margin:0}
+.out table.grid{font:13px var(--f-mono)}
+.mission{display:flex;flex-direction:column;gap:18px}
+.lvl{background:var(--panel)}
+.lvl > .lh{display:flex;align-items:center;gap:10px;padding:9px 14px;font-weight:600}
+.lvl > .lh .n{font-family:var(--f-pixel);font-size:9px;color:var(--muted);min-width:22px}
+.lvl > .lh .st{margin-left:auto;font-family:var(--f-pixel);font-size:8px;padding:5px 7px}
+.lvl.done{background:var(--bg2);color:var(--muted)}
+.lvl.done .st{background:var(--green);color:var(--edge)}
+.lvl.cur{box-shadow:0 0 0 3px var(--yellow)}
+.lvl.cur .st{background:var(--yellow);color:var(--edge)}
+.lvl.lock{background:transparent;box-shadow:inset 0 0 0 2px var(--panel);color:var(--dim)}
+.checks{list-style:none;margin:0;padding:0 14px 14px;display:flex;flex-direction:column;gap:7px}
+.checks li{display:grid;grid-template-columns:20px minmax(0,1fr);gap:6px;font-size:14px}
+.checks li .d{display:block;font-size:13px;color:#FFB3BA}
+.checks li.ok .i{color:var(--green)}
+.checks li.ko .i{color:var(--red)}
+.checks li.sk{color:var(--dim)}
+.lvllist{display:flex;flex-direction:column;gap:8px}
+details.box{background:var(--panel)}
+details.box > summary{padding:10px 14px;cursor:pointer;font-weight:600}
+details.box > div{padding:0 14px 14px;font-size:13.5px}
+.schema-t{margin-top:10px}
+.schema-t h4{font-family:var(--f-mono);font-size:13px;margin:0 0 4px;color:var(--yellow)}
+.schema-t ul{margin:0;padding-left:18px;font-family:var(--f-mono);font-size:12px;color:var(--muted)}
+.memo pre{background:var(--code-bg);padding:10px 12px;font-size:12px;overflow-x:auto;margin:6px 0 10px}
+code{font-family:var(--f-mono);font-size:.92em}
+
+/* ---------- cahier des charges (feuille claire) ---------- */
+.spec{max-width:840px;margin:0 auto;background:var(--paper);color:var(--paper-ink);padding:clamp(20px,4vw,52px);box-shadow:10px 10px 0 0 var(--edge)}
+.spec .doc-meta{font-family:var(--f-mono);font-size:12px;color:#6D6888;display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;border-bottom:2px solid var(--paper-line);padding-bottom:12px;margin-bottom:24px}
+.spec h1{font-family:var(--f-pixel);font-size:clamp(16px,3vw,22px);line-height:1.5;color:var(--paper-accent)}
+.spec .lede{font-size:17px;color:#57526F;margin:12px 0 26px}
+.spec h2{font-size:21px;margin:34px 0 10px;display:flex;gap:12px;align-items:baseline}
+.spec h2 .sec{font-family:var(--f-pixel);font-size:11px;color:var(--pink)}
+.spec h3{font-size:16px;margin:18px 0 6px}
+.spec p,.spec li{max-width:70ch}
+.spec .ui{border-left:4px solid var(--paper-line);padding:2px 0 2px 14px;margin:14px 0;color:#57526F}
+.spec table.grid th{color:#6D6888;font-family:var(--f-body);font-size:11px;text-transform:uppercase;letter-spacing:.06em}
+.spec table.grid th,.spec table.grid td{border-bottom:1px solid var(--paper-line)}
+.spec table{margin:12px 0}
+.spec .names{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}
+.spec .names code,.spec p code,.spec li code{background:#E8E0C9;padding:1px 6px}
+.spec .mono{font-family:var(--f-mono);font-size:13px}
+.done-banner{background:var(--green);color:var(--edge);padding:14px 16px;font-family:var(--f-pixel);font-size:11px;line-height:1.6}
+/* ---------- Octet ---------- */
+#octet{position:fixed;right:max(16px,env(safe-area-inset-right,0px));bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:15;display:flex;flex-direction:column;align-items:flex-end;gap:12px}
+.o-bot{border:0;background:var(--panel2);padding:8px;position:relative;box-shadow:0 4px 0 0 var(--edge);animation:hover 1.4s steps(2) infinite}
+.o-bot canvas{width:56px;height:56px;image-rendering:pixelated;display:block}
+.o-q-badge{position:absolute;top:-10px;left:-10px;background:var(--yellow);color:var(--edge);font-family:var(--f-pixel);font-size:11px;width:24px;height:24px;display:grid;place-items:center;box-shadow:2px 2px 0 var(--edge)}
+@keyframes hover{50%{transform:translateY(-4px)}}
+.o-panel{background:var(--frame);color:var(--edge);width:min(440px,calc(100vw - 32px));max-height:min(70vh,560px);overflow:auto;padding:16px 16px 14px;position:relative;font:19px/1.2 var(--f-retro)}
+.o-panel p{margin:0 0 10px}
+.o-say{color:#4B4870}
+.o-q{font-weight:700;color:var(--edge);font-size:21px}
+.o-close{position:absolute;top:6px;right:8px;border:0;background:none;font-size:18px;color:var(--edge)}
+.o-opts{display:flex;flex-direction:column;gap:8px}
+.o-opts button{border:0;background:var(--panel);color:var(--ink);text-align:left;padding:8px 10px;font:18px/1.15 var(--f-retro);box-shadow:0 3px 0 0 var(--edge)}
+.o-opts button:hover{background:var(--panel2)}
+.o-sulk{color:#B3263A}
+.o-warn{color:#B3263A;font-size:17px}
+.o-tip{margin-top:10px}
+.o-tip b{display:block;font-family:var(--f-pixel);font-size:9px;color:var(--pink);margin-bottom:6px;line-height:1.5}
+.o-tip pre{margin:0;background:var(--code-bg);color:var(--code-ink);padding:8px 10px;font:12px/1.5 var(--f-mono);white-space:pre-wrap;overflow-wrap:anywhere}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+@media (max-width:640px){.levels{margin-left:0;width:100%}.pips{flex:1}.pip{flex:1;width:auto}}
+</style>
+
+<header class="top">
+  <div class="wrap top-row">
+    <div class="brand">STARTUP CLICKER</div>
+    <nav class="tabs" role="tablist" aria-label="Sections">
+      <button role="tab" id="t-game" aria-selected="true" data-tab="game">LE JEU</button>
+      <button role="tab" id="t-sql" aria-selected="false" data-tab="sql">CONSOLE SQL</button>
+      <button role="tab" id="t-spec" aria-selected="false" data-tab="spec">CAHIER DES CHARGES</button>
+    </nav>
+    <div class="levels" title="Progression">
+      <span class="lbl" id="score-top" style="color:var(--yellow)"></span><span class="lbl" id="lvl-label">ÉTAPE 1/8</span>
+      <div class="pips" id="pips"></div>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="tab" id="tab-game">
+    <div id="kevin-game"></div>
+    <div id="game-root" class="retro"><p id="boot-msg">Démarrage de la base de données…</p></div>
+  </section>
+
+  <section class="tab" id="tab-sql" hidden>
+    <div class="console">
+      <div style="min-width:0">
+        <div class="modebar"><span>Syntaxe :</span><button type="button" data-mode="mysql" aria-pressed="true">MySQL</button><button type="button" data-mode="pg" aria-pressed="false">PostgreSQL</button></div>
+        <div class="editor px">
+          <div class="gutter" id="gutter" aria-hidden="true">1</div>
+          <textarea id="sql" spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="Votre script SQL"></textarea>
+        </div>
+        <div class="toolbar">
+          <button class="pbtn" id="run">EXÉCUTER ▶</button>
+          <button class="pbtn ghost" id="copy">COPIER</button>
+          <span class="hint">Ctrl + Entrée pour exécuter. Le script est rejoué en entier, sur une base vide, à chaque exécution.</span>
+        </div>
+        <div class="out" id="out"></div>
+      </div>
+      <div class="mission" id="mission"></div>
+    </div>
+  </section>
+
+  <section class="tab" id="tab-spec" hidden>
+    <article class="spec" id="spec">
+      <div class="doc-meta"><span>PIXELSPROUT · CDC-2026-014 · version 3</span><span>Destinataires : équipe base de données</span></div>
+      <h1>Startup Clicker : cahier des charges</h1>
+      <p class="lede">Startup Clicker est un jeu incrémental : on clique pour écrire des lignes de code, puis on dépense ces lignes pour recruter et s'équiper, afin d'en écrire toujours plus. Ce document décrit le fonctionnement complet de l'application.</p>
+
+      <h2><span class="sec">§1</span> Organisation du projet</h2>
+      <p>L'interface du jeu est terminée et ne peut pas être modifiée. Elle s'appuie sur une base de données relationnelle qui reste à créer : c'est votre mission. La base doit utiliser exactement les noms listés en annexe et garantir toutes les règles décrites ici, car l'application ne vérifie presque rien elle-même : elle compte sur la base pour refuser les données invalides.</p>
+      <p>Toutes les données de référence du jeu (bâtiments, améliorations, succès) doivent être insérées par votre script.</p>
+
+      <h2><span class="sec">§2</span> L'écran d'accueil</h2>
+      <p class="ui">L'écran d'accueil affiche un formulaire d'inscription et le hall of fame. Le formulaire comporte un champ « Pseudo » et, une fois les parties gérées, un champ « Nom de votre startup ». Le bouton « Valider » lance la partie. Sur un écran de moins de 820 pixels de large, le formulaire et le hall of fame s'affichent l'un sous l'autre.</p>
+      <p>Le hall of fame affiche les 10 meilleures startups, triées par l'application de la plus productive à la moins productive.</p>
+
+      <h2><span class="sec">§3</span> Les joueurs</h2>
+      <p>Pour jouer, il faut s'inscrire avec un <strong>pseudo</strong>. Le pseudo est obligatoire et fait 20 caractères au maximum. Deux joueurs ne peuvent pas avoir le même pseudo.</p>
+      <p>Le pseudo pourra être modifié dans une future version, il ne sert donc pas d'identifiant : chaque joueur reçoit un <strong>numéro attribué automatiquement</strong> par la base. Tout joueur a une <strong>date d'inscription</strong> : la base l'enregistre automatiquement au moment de l'inscription, l'application ne la fournit pas.</p>
+      <p>L'inscription ne demande ni adresse e-mail ni mot de passe : la base n'en stocke pas.</p>
+      <p class="ui">Quand un pseudo est déjà pris, l'application affiche un message d'erreur sous le formulaire. Le joueur peut alors choisir son pseudo dans la liste « Continuer en tant que… » pour reprendre une de ses parties.</p>
+
+      <h2><span class="sec">§4</span> Les parties</h2>
+      <p>Un joueur peut lancer plusieurs parties : chaque partie correspond à une startup différente. Une partie appartient toujours à un et un seul joueur, qui doit exister. Chaque partie est identifiée par un numéro attribué automatiquement.</p>
+      <p>Le joueur peut donner un <strong>nom à sa startup</strong> (50 caractères au maximum). S'il ne le fait pas, elle s'appelle « Ma Startup ». Une startup a toujours un nom.</p>
+      <p>Pour chaque partie, la base garde trois compteurs. Ce sont des nombres entiers, qui commencent à 0, sont toujours renseignés et ne sont jamais négatifs :</p>
+      <ul>
+        <li>le nombre de <strong>lignes de code</strong> disponibles (la monnaie du jeu, qu'on dépense dans la boutique) ;</li>
+        <li>le <strong>total des lignes</strong> écrites depuis le début de la partie (il ne baisse jamais, même quand on dépense) : c'est le score du hall of fame ;</li>
+        <li>le <strong>nombre de clics</strong>.</li>
+      </ul>
+      <p>Les bons joueurs dépassent très vite 2 milliards de lignes. Toute partie a une <strong>date de création</strong>, enregistrée automatiquement par la base.</p>
+      <p>Quand un joueur est supprimé, toutes ses parties sont supprimées avec lui.</p>
+      <p class="ui">Pendant la partie, chaque clic sur la grosse touche rose ajoute des lignes et fait apparaître le gain au-dessus de la touche. Un petit terminal sous la touche affiche le code « tapé » par le joueur. L'application sauvegarde la partie toutes les 3 secondes et quand on quitte l'onglet.</p>
+
+      <h2><span class="sec">§5</span> Le catalogue des bâtiments</h2>
+      <p>Avec ses lignes, le joueur achète des bâtiments qui écrivent du code à sa place, chaque seconde. Le catalogue est le même pour tout le monde. Chaque bâtiment a un numéro attribué automatiquement, un <strong>nom</strong> obligatoire et unique, un <strong>prix de base</strong> (nombre entier strictement positif), une <strong>production</strong> en lignes par seconde (obligatoire, strictement positive, avec une décimale) et une <strong>description</strong> facultative.</p>
+      <div class="scroll-x"><table class="grid">
+        <thead><tr><th>Icône</th><th>Nom</th><th class="r">Prix de base</th><th class="r">Production (lignes/s)</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td>🧑‍🎓</td><td>Stagiaire</td><td class="r num">15</td><td class="r num">0,1</td><td>Copie-colle depuis Stack Overflow avec conviction.</td></tr>
+          <tr><td>☕</td><td>Machine à café</td><td class="r num">100</td><td class="r num">1</td><td>Transforme le café en code. Littéralement.</td></tr>
+          <tr><td>🧑‍💻</td><td>Développeur junior</td><td class="r num">1 100</td><td class="r num">8</td><td>Motivé. Très motivé. Trop motivé ?</td></tr>
+          <tr><td>☁️</td><td>Serveur cloud</td><td class="r num">12 000</td><td class="r num">47</td><td>Le cloud, c'est l'ordinateur de quelqu'un d'autre.</td></tr>
+          <tr><td>👩‍💻</td><td>Développeuse senior</td><td class="r num">130 000</td><td class="r num">260</td><td>A déjà vu ce bug en 2009.</td></tr>
+          <tr><td>🤖</td><td>IA générative</td><td class="r num">1 400 000</td><td class="r num">1 400</td><td>Écrit du code. Parfois juste.</td></tr>
+          <tr><td>🏭</td><td>Data center</td><td class="r num">20 000 000</td><td class="r num">7 800</td><td>Chauffe tout le quartier.</td></tr>
+          <tr><td>⚛️</td><td>Ordinateur quantique</td><td class="r num">330 000 000</td><td class="r num">44 000</td><td>Le code marche et ne marche pas en même temps.</td></tr>
+        </tbody>
+      </table></div>
+      <p class="ui">Les icônes font partie de l'interface. Le prix affiché d'un bâtiment augmente de 15 % à chaque exemplaire acheté : l'application le calcule à partir du prix de base. Un bouton d'achat est grisé tant que le joueur n'a pas assez de lignes.</p>
+
+      <h2><span class="sec">§6</span> Ce que possède chaque partie</h2>
+      <p>Pour chaque partie, on doit savoir combien d'exemplaires de chaque bâtiment elle possède. Il n'y a qu'une information par couple partie / bâtiment : la <strong>quantité</strong>, un nombre entier obligatoire, jamais négatif.</p>
+      <p>Quand une partie est supprimée, ce qu'elle possédait est supprimé aussi. En revanche, il doit être impossible de retirer du catalogue un bâtiment qu'au moins une partie possède.</p>
+
+      <h2><span class="sec">§7</span> Les améliorations</h2>
+      <p>Les améliorations sont des bonus qu'une partie achète une seule fois. Chacune a un numéro attribué automatiquement, un <strong>nom</strong> obligatoire et unique, un <strong>prix</strong> (entier strictement positif) et un <strong>multiplicateur</strong> (entier, au moins 2). Une amélioration concerne soit un bâtiment du catalogue (elle multiplie sa production), soit le clic (aucun bâtiment : elle multiplie les lignes gagnées par clic).</p>
+      <div class="scroll-x"><table class="grid">
+        <thead><tr><th>Nom</th><th class="r">Prix</th><th>Concerne</th><th class="r">Multiplicateur</th></tr></thead>
+        <tbody>
+          <tr><td>Clavier mécanique</td><td class="r num">100</td><td>le clic</td><td class="r">×2</td></tr>
+          <tr><td>Stack Overflow Premium</td><td class="r num">500</td><td>Stagiaire</td><td class="r">×2</td></tr>
+          <tr><td>Café en grains bio</td><td class="r num">1 000</td><td>Machine à café</td><td class="r">×2</td></tr>
+          <tr><td>Double écran</td><td class="r num">5 000</td><td>le clic</td><td class="r">×2</td></tr>
+          <tr><td>Mentorat</td><td class="r num">11 000</td><td>Développeur junior</td><td class="r">×2</td></tr>
+          <tr><td>Kubernetes</td><td class="r num">120 000</td><td>Serveur cloud</td><td class="r">×2</td></tr>
+          <tr><td>Semaine de 4 jours</td><td class="r num">1 300 000</td><td>Développeuse senior</td><td class="r">×3</td></tr>
+          <tr><td>Prompt engineering</td><td class="r num">14 000 000</td><td>IA générative</td><td class="r">×2</td></tr>
+        </tbody>
+      </table></div>
+      <p>Quand une partie achète une amélioration, la <strong>date d'achat</strong> est enregistrée automatiquement. Une partie ne peut pas acheter deux fois la même amélioration. Quand la partie est supprimée, ses achats sont supprimés avec elle.</p>
+      <p class="ui">Une amélioration liée à un bâtiment n'apparaît qu'après l'achat du premier exemplaire de ce bâtiment. Les améliorations du clic sont toujours visibles.</p>
+
+      <h2><span class="sec">§8</span> Les succès</h2>
+      <p>Les succès (badges) récompensent les joueurs. Chaque succès est identifié par un <strong>code</strong> en majuscules de 30 caractères au maximum : ce code sert directement d'identifiant. Chaque succès a aussi un <strong>nom</strong> et une <strong>description</strong>, tous deux obligatoires.</p>
+      <div class="scroll-x"><table class="grid">
+        <thead><tr><th>Code</th><th>Nom</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">HELLO_WORLD</td><td>Hello World !</td><td>Écrire sa première ligne de code.</td></tr>
+          <tr><td class="mono">TENDINITE</td><td>Tendinite</td><td>Cliquer 100 fois.</td></tr>
+          <tr><td class="mono">CA_COMPILE</td><td>Ça compile !</td><td>Écrire 1 000 lignes de code au total.</td></tr>
+          <tr><td class="mono">PREMIER_STAGIAIRE</td><td>Premier recrutement</td><td>Recruter un stagiaire.</td></tr>
+          <tr><td class="mono">OPEN_SPACE</td><td>Open space</td><td>Posséder 10 stagiaires.</td></tr>
+          <tr><td class="mono">OPTIMISATION</td><td>Optimisation</td><td>Acheter sa première amélioration.</td></tr>
+          <tr><td class="mono">SKYNET</td><td>Skynet</td><td>Posséder une IA générative.</td></tr>
+          <tr><td class="mono">LICORNE</td><td>Licorne</td><td>Écrire 1 000 000 de lignes de code au total.</td></tr>
+        </tbody>
+      </table></div>
+      <p>Quand une partie obtient un succès, la <strong>date d'obtention</strong> est enregistrée automatiquement. Une partie obtient chaque succès une seule fois. Quand la partie est supprimée, ses succès sont supprimés avec elle.</p>
+      <p class="ui">Les conditions d'obtention font partie du code de l'application. Chaque nouveau succès s'annonce par une notification en bas à droite de l'écran.</p>
+
+      <h2><span class="sec">§9</span> Le hall of fame complet</h2>
+      <p class="ui">Une fois la boutique en place, le hall of fame affiche aussi, pour chaque startup, le nombre total de bâtiments possédés. L'application calcule ce total elle-même à partir de ce que possède chaque partie.</p>
+
+      <h2><span class="sec">§10</span> Gérard, le bug</h2>
+      <p class="ui">De temps en temps, Gérard, un petit bug vert, traverse l'écran de jeu. S'il est attrapé (un clic) avant de disparaître, le joueur gagne un bonus égal à environ 45 secondes de production. Gérard est géré entièrement par l'application.</p>
+
+      <h2><span class="sec">Annexe</span> Les noms utilisés par l'application</h2>
+      <p>Voici tous les noms que l'application utilise pour interroger la base : nom de la base, des tables, de la vue et des colonnes, mélangés et classés par ordre alphabétique. Tous les noms sont en minuscules, sans accent.</p>
+      <div class="names">
+        <code>amelioration</code><code>amelioration_achetee</code><code>amelioration_id</code><code>batiment</code><code>batiment_id</code><code>code</code><code>cout</code><code>cout_base</code><code>date_achat</code><code>date_creation</code><code>date_inscription</code><code>date_obtention</code><code>description</code><code>id</code><code>joueur</code><code>joueur_id</code><code>lignes_code</code><code>multiplicateur</code><code>nb_clics</code><code>nom</code><code>nom_startup</code><code>partie</code><code>partie_id</code><code>possession</code><code>production</code><code>pseudo</code><code>quantite</code><code>startup_clicker</code><code>succes</code><code>succes_code</code><code>succes_obtenu</code><code>total_lignes</code>
+      </div>
+
+      </article>
+  </section>
+</main>
+<div class="toasts" id="toasts" aria-live="polite"></div>
+<div id="octet"></div>
+<script type="module">
+/* =====================================================================
+   Startup Clicker — le jeu lit et écrit uniquement dans la base écrite
+   par les étudiants. PostgreSQL tourne dans le navigateur (PGlite).
+   ===================================================================== */
+const PGLITE_LOCAL = './pglite/index.js';
+const PGLITE_CDN = 'https://cdn.jsdelivr.net/npm/@electric-sql/pglite@0.2.17/dist/index.js';
+
+const $ = (s, r=document) => r.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const norm = s => String(s ?? '').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/\s+/g,' ').trim();
+const store = {
+  get(k, d){ try{ const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); }catch{ return d; } },
+  set(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch{} },
+  del(k){ try{ localStorage.removeItem(k); }catch{} }
+};
+const rnd = () => Math.random().toString(36).slice(2, 8);
+
+let db = null;
+let LEVEL = 0;            // nombre d'étapes validées (0..9)
+const has = k => LEVEL > k;
+/* Étapes : 0 joueurs · 1 identité · 2 parties/scores · 3 cascade · 4 catalogue
+            5 possession · 6 améliorations · 7 succès · 8 vue classement */
+/* ---------------- accès base ---------------- */
+async function q(sql, params = []){ return (await db.query(sql, params)).rows; }
+async function one(sql, params = []){ return (await q(sql, params))[0]; }
+async function tx(fn){ await db.exec('BEGIN'); try { return await fn(); } finally { try { await db.exec('ROLLBACK'); } catch {} } }
+async function attempt(sql, params = []){
+  await db.exec('SAVEPOINT t');
+  try { const r = await db.query(sql, params); await db.exec('RELEASE SAVEPOINT t'); return { ok:true, rows:r.rows }; }
+  catch(e){ await db.exec('ROLLBACK TO SAVEPOINT t'); return { ok:false, code:e.code, msg:e.message }; }
+}
+
+/* ---------------- introspection ---------------- */
+async function tableExists(t){ return !!(await one(`select 1 from information_schema.tables where table_schema='public' and table_name=$1 and table_type='BASE TABLE'`, [t])); }
+async function viewExists(t){ return !!(await one(`select 1 from information_schema.views where table_schema='public' and table_name=$1`, [t])); }
+async function columns(t){
+  const rows = await q(`select column_name, data_type, is_nullable, column_default, is_identity from information_schema.columns where table_schema='public' and table_name=$1`, [t]);
+  const m = {}; rows.forEach(r => m[r.column_name] = r); return m;
+}
+async function uniqueSets(t){
+  const rows = await q(`select string_agg(a.attname::text, ',' order by a.attname::text) as cols, i.indisprimary as pk
+    from pg_index i join pg_class c on c.oid=i.indrelid join pg_namespace n on n.oid=c.relnamespace
+    join pg_attribute a on a.attrelid=c.oid and a.attnum = any(i.indkey)
+    where n.nspname='public' and c.relname=$1 and i.indisunique group by i.indexrelid, i.indisprimary`, [t]);
+  return rows;
+}
+async function fks(t){
+  return q(`select a.attname::text as col, cf.relname::text as reftable, af.attname::text as refcol, c.confdeltype::text as del
+    from pg_constraint c join pg_class t on t.oid=c.conrelid join pg_namespace n on n.oid=t.relnamespace
+    join pg_class cf on cf.oid=c.confrelid
+    join pg_attribute a on a.attrelid=c.conrelid and a.attnum=c.conkey[1]
+    join pg_attribute af on af.attrelid=c.confrelid and af.attnum=c.confkey[1]
+    where c.contype='f' and n.nspname='public' and t.relname=$1`, [t]);
+}
+
+const T_INT = ['integer','bigint','smallint','numeric'];
+const T_BIG = ['bigint','numeric'];
+const T_TXT = ['character varying','text','character'];
+const T_TIME = ['timestamp without time zone','timestamp with time zone','date'];
+const T_DEC = ['numeric','real','double precision'];
+const BAD_STRUCT = ['42703','42P01','42804','42601'];
+
+async function colsCheck(t, spec){
+  const c = await columns(t); const miss = [], bad = [];
+  for (const [k, types] of Object.entries(spec)){
+    if (!c[k]) miss.push(k);
+    else if (types && !types.includes(c[k].data_type)) bad.push(`${k} est de type ${c[k].data_type}`);
+  }
+  if (miss.length) return `Colonne(s) introuvable(s) dans ${t} : ${miss.join(', ')}`;
+  if (bad.length) return `Type inadapté : ${bad.join(' ; ')}`;
+  return true;
+}
+async function pkIs(t, cols){
+  const sets = await uniqueSets(t); const pk = sets.find(s => s.pk);
+  const want = [...cols].sort().join(',');
+  if (!pk) return `La table ${t} n'a pas de clé primaire.`;
+  if (pk.cols !== want) return `La clé primaire de ${t} porte sur (${pk.cols}) au lieu de (${want.replace(/,/g, ', ')}).`;
+  return true;
+}
+async function uniqueOn(t, cols, msg){
+  const sets = await uniqueSets(t); const want = [...cols].sort().join(',');
+  return sets.some(s => s.cols === want) ? true : msg;
+}
+async function fkIs(t, col, reft, refc){
+  const f = (await fks(t)).find(r => r.col === col);
+  if (!f) return `${t}.${col} n'est pas une clé étrangère.`;
+  if (f.reftable !== reft || f.refcol !== refc) return `${t}.${col} référence ${f.reftable}(${f.refcol}) au lieu de ${reft}(${refc}).`;
+  return true;
+}
+function refused(r, what){
+  if (r.ok) return `La base accepte ${what}. Elle devrait refuser.`;
+  if (BAD_STRUCT.includes(r.code)) return `Test impossible : ${r.msg}`;
+  return true;
+}
+function accepted(r, what){ return r.ok ? true : `La base refuse ${what} : ${r.msg}${explain(r.msg)}`; }
+const PKEY_TIP = msg => /duplicate key value violates unique constraint "\w+_pkey"/.test(msg || '') ? " → Votre script insère des id écrits à la main, et le compteur automatique de PostgreSQL n'a pas avancé : il redonne un id déjà pris. Laissez la base attribuer les id (ne les mettez pas dans vos INSERT)." : '';
+function explain(msg){
+  const m = /null value in column "(\w+)"/.exec(msg || '');
+  if (!m) return '';
+  if (/^date_/.test(m[1])) return ` → La colonne ${m[1]} est obligatoire, et l'application ne la remplit pas : c'est la base qui doit y mettre toute seule la date et l'heure du moment de l'insertion. Cherchez comment donner à une colonne une valeur par défaut égale à « maintenant ».`;
+  return ` → La colonne ${m[1]} est obligatoire, mais l'application ne lui donne pas de valeur. Cherchez comment donner une valeur par défaut à une colonne.`;
+}
+const DATE_TIP = col => `${col} reste vide quand l'application ne la fournit pas. C'est la base qui doit y mettre toute seule la date et l'heure de l'insertion : cherchez comment donner à une colonne une valeur par défaut égale à « maintenant ».`;
+const all = (...rs) => rs.find(r => r !== true) ?? true;
+
+/* objets de test (toujours dans une transaction annulée) */
+async function tJoueur(p){ const r = await attempt('insert into joueur(pseudo) values($1) returning *', [p ?? 'zz_' + rnd()]); if (!r.ok) throw new Error(`Impossible d'insérer un joueur de test : ${r.msg}${PKEY_TIP(r.msg)}`); return r.rows[0].id; }
+async function tPartie(j){ const r = await attempt('insert into partie(joueur_id) values($1) returning *', [j]); if (!r.ok) throw new Error(`Impossible d'insérer une partie de test : ${r.msg}${PKEY_TIP(r.msg)}`); return r.rows[0].id; }
+async function tBat(){ const r = await attempt('insert into batiment(nom, cout_base, production) values($1, 10, 1) returning *', ['zz_' + rnd()]); if (!r.ok) throw new Error(`Impossible d'insérer un bâtiment de test : ${r.msg}${PKEY_TIP(r.msg)}`); return r.rows[0].id; }
+async function tAmel(b=null){ const r = await attempt('insert into amelioration(nom, cout, batiment_id, multiplicateur) values($1, 10, $2, 2) returning *', ['zz_' + rnd(), b]); if (!r.ok) throw new Error(`Impossible d'insérer une amélioration de test : ${r.msg}${PKEY_TIP(r.msg)}`); return r.rows[0].id; }
+async function tSucces(){ const code = 'ZZ_' + rnd().toUpperCase(); const r = await attempt('insert into succes(code, nom, description) values($1, $2, $3)', [code, 'Test', 'Test']); if (!r.ok) throw new Error(`Impossible d'insérer un succès de test : ${r.msg}${PKEY_TIP(r.msg)}`); return code; }
+
+/* ---------------- données attendues ---------------- */
+const BATS = [
+  ['Stagiaire',15,0.1,'🧑‍🎓'],['Machine à café',100,1,'☕'],['Développeur junior',1100,8,'🧑‍💻'],['Serveur cloud',12000,47,'☁️'],
+  ['Développeuse senior',130000,260,'👩‍💻'],['IA générative',1400000,1400,'🤖'],['Data center',20000000,7800,'🏭'],['Ordinateur quantique',330000000,44000,'⚛️']
+];
+const AMELS = [
+  ['Clavier mécanique',100,null,2],['Stack Overflow Premium',500,'Stagiaire',2],['Café en grains bio',1000,'Machine à café',2],['Double écran',5000,null,2],
+  ['Mentorat',11000,'Développeur junior',2],['Kubernetes',120000,'Serveur cloud',2],['Semaine de 4 jours',1300000,'Développeuse senior',3],['Prompt engineering',14000000,'IA générative',2]
+];
+const SUCCES = [
+  ['HELLO_WORLD','Hello World !'],['TENDINITE','Tendinite'],['CA_COMPILE','Ça compile !'],['PREMIER_STAGIAIRE','Premier recrutement'],
+  ['OPEN_SPACE','Open space'],['OPTIMISATION','Optimisation'],['SKYNET','Skynet'],['LICORNE','Licorne']
+];
+const ICON = Object.fromEntries(BATS.map(b => [norm(b[0]), b[3]]));
+const SUCCES_COND = {
+  HELLO_WORLD: g => g.total >= 1,
+  TENDINITE: g => g.clics >= 100,
+  CA_COMPILE: g => g.total >= 1000,
+  PREMIER_STAGIAIRE: g => (g.owned[norm('Stagiaire')] || 0) >= 1,
+  OPEN_SPACE: g => (g.owned[norm('Stagiaire')] || 0) >= 10,
+  OPTIMISATION: g => g.upgrades.length >= 1,
+  SKYNET: g => (g.owned[norm('IA générative')] || 0) >= 1,
+  LICORNE: g => g.total >= 1e6,
+};
+
+/* ---------------- niveaux ---------------- */
+const chk = (label, fn, gate=false) => ({ label, fn, gate });
+const LEVELS = [
+  { titre:'Les joueurs', unlock:'Le formulaire d\'inscription fonctionne.',
+    say:`<p>Salut l'équipe ! J'aimerais ouvrir mon <b>click center</b>, mais il me faut des joueurs !</p><p>Jérémy a codé le formulaire d'inscription, mais quand on clique sur « Valider », ça plante. Il nous faut une base de données et de quoi enregistrer les joueurs. Pour l'instant, juste leur pseudo.</p>`,
+    checks:[
+      chk('La base startup_clicker existe', async () => (await one(`select 1 from pg_database where datname='startup_clicker'`)) ? true : `Aucune base nommée startup_clicker.`, true),
+    
+      chk('La table joueur existe', async () => await tableExists('joueur') ? true : 'Table joueur introuvable.', true),
+      chk('Elle a une colonne pseudo de type texte', () => colsCheck('joueur', { pseudo:T_TXT }), true),
+      chk('On peut y enregistrer un joueur à partir de son pseudo', () => tx(async () => accepted(await attempt(`insert into joueur(pseudo) values('Linus')`), 'un joueur nommé Linus'))),
+    ]},
+  { titre:'Identifier les joueurs', unlock:'Choix du profil, pseudos vérifiés.',
+    say:`<p>Ça marche ! Mais regarde le hall of fame : deux joueurs s'appellent <b>Neo</b>, et quelqu'un s'est inscrit sans pseudo. Le support ne sait plus qui est qui.</p><p>Relis les règles sur les joueurs dans le cahier des charges (§3).</p>`,
+    checks:[
+      chk('Chaque joueur a une colonne id', () => colsCheck('joueur', { id:T_INT }), true),
+      chk('id est la clé primaire de joueur', () => pkIs('joueur', ['id'])),
+      chk("id est attribué automatiquement par la base", () => tx(async () => { const r = await attempt(`insert into joueur(pseudo) values('Grace') returning id`); if (!r.ok) return `Insertion d'un joueur sans id refusée : ${r.msg}${PKEY_TIP(r.msg)}`; return r.rows[0].id != null ? true : "L'id reste vide quand on ne le fournit pas."; })),
+      chk('Le pseudo est obligatoire', () => tx(async () => refused(await attempt(`insert into joueur(pseudo) values(null)`), 'un joueur sans pseudo'))),
+      chk('Deux joueurs ne peuvent pas avoir le même pseudo', () => tx(async () => { await attempt(`insert into joueur(pseudo) values('Morpheus')`); return refused(await attempt(`insert into joueur(pseudo) values('Morpheus')`), 'deux joueurs nommés Morpheus'); })),
+      chk('Le pseudo fait 20 caractères au maximum', () => tx(async () => all(
+        accepted(await attempt(`insert into joueur(pseudo) values('Abcdefghijklmnopqrst')`), 'un pseudo de 20 caractères'),
+        refused(await attempt(`insert into joueur(pseudo) values('Abcdefghijklmnopqrstu')`), 'un pseudo de 21 caractères')))),
+      chk("La date d'inscription est obligatoire et enregistrée automatiquement", async () => { const c = await colsCheck('joueur', { date_inscription:T_TIME }); if (c !== true) return c;
+        return tx(async () => { const r = await attempt(`insert into joueur(pseudo) values('Ada') returning date_inscription`); if (!r.ok) return r.msg; if (r.rows[0].date_inscription == null) return DATE_TIP("date_inscription");
+          return refused(await attempt(`insert into joueur(pseudo, date_inscription) values('Ada2', null)`), 'un joueur sans date d\'inscription'); }); }),
+    ]},
+  { titre:'Parties et scores', unlock:'Le hall of fame affiche les scores, la partie est sauvegardée.',
+    say:`<p>Je veux un vrai <b>hall of fame</b>, avec des scores ! Chaque joueur doit pouvoir lancer des parties, et on doit garder leurs compteurs (§4).</p><p>Pour l'instant rien n'est sauvegardé : recharge la page et tout est perdu.</p>`,
+    checks:[
+      chk('La table partie existe', async () => await tableExists('partie') ? true : 'Table partie introuvable.', true),
+      chk('Elle a toutes les colonnes attendues', () => colsCheck('partie', { id:T_INT, joueur_id:T_INT, nom_startup:T_TXT, lignes_code:T_INT, total_lignes:T_INT, nb_clics:T_INT, date_creation:T_TIME }), true),
+      chk('id est une clé primaire attribuée automatiquement', async () => all(await pkIs('partie', ['id']), await tx(async () => { const j = await tJoueur(); const r = await attempt('insert into partie(joueur_id) values($1) returning id', [j]); return r.ok && r.rows[0].id != null ? true : `Insertion d'une partie sans id refusée : ${r.msg}${PKEY_TIP(r.msg)}`; }))),
+      chk('Une partie appartient obligatoirement à un joueur existant', async () => all(await fkIs('partie', 'joueur_id', 'joueur', 'id'), await tx(async () => refused(await attempt('insert into partie(joueur_id) values(null)'), 'une partie sans joueur')))),
+      chk('Le nom de la startup vaut « Ma Startup » par défaut', () => tx(async () => { const j = await tJoueur(); const r = await attempt('insert into partie(joueur_id) values($1) returning nom_startup', [j]); if (!r.ok) return r.msg; return r.rows[0].nom_startup === 'Ma Startup' ? true : `Nom par défaut obtenu : ${r.rows[0].nom_startup === null ? 'NULL' : '« ' + r.rows[0].nom_startup + ' »'}.`; })),
+      chk('Une startup a toujours un nom, de 50 caractères au maximum', () => tx(async () => { const j = await tJoueur(); return all(
+        refused(await attempt('insert into partie(joueur_id, nom_startup) values($1, null)', [j]), 'une startup sans nom'),
+        accepted(await attempt('insert into partie(joueur_id, nom_startup) values($1, $2)', [j, 'x'.repeat(50)]), 'un nom de 50 caractères'),
+        refused(await attempt('insert into partie(joueur_id, nom_startup) values($1, $2)', [j, 'x'.repeat(51)]), 'un nom de 51 caractères')); })),
+      chk('Les trois compteurs commencent à 0', () => tx(async () => { const j = await tJoueur(); const r = await attempt('insert into partie(joueur_id) values($1) returning lignes_code, total_lignes, nb_clics', [j]); if (!r.ok) return r.msg; const p = r.rows[0]; const bad = ['lignes_code','total_lignes','nb_clics'].filter(k => Number(p[k]) !== 0 || p[k] === null); return bad.length ? `Ne valent pas 0 au départ : ${bad.join(', ')}.` : true; })),
+      chk('Les compteurs sont toujours renseignés et jamais négatifs', () => tx(async () => { const j = await tJoueur(); const p = await tPartie(j); const out = [];
+        for (const k of ['lignes_code','total_lignes','nb_clics']){ out.push(refused(await attempt(`update partie set ${k} = -1 where id = $1`, [p]), `${k} = -1`)); out.push(refused(await attempt(`update partie set ${k} = null where id = $1`, [p]), `${k} vide (NULL)`)); }
+        return all(...out); })),
+      chk('Les compteurs dépassent 2 milliards sans problème', () => tx(async () => { const j = await tJoueur(); const p = await tPartie(j);
+        return all(accepted(await attempt('update partie set lignes_code = 5000000000, total_lignes = 5000000000, nb_clics = 5000000000 where id = $1', [p]), '5 milliards de lignes')); })),
+      chk('La date de création est obligatoire et enregistrée automatiquement', () => tx(async () => { const j = await tJoueur(); const r = await attempt('insert into partie(joueur_id) values($1) returning date_creation', [j]); if (!r.ok) return r.msg; if (r.rows[0].date_creation == null) return DATE_TIP('date_creation'); return refused(await attempt('insert into partie(joueur_id, date_creation) values($1, null)', [j]), 'une partie sans date de création'); })),
+    ]},
+  { titre:'Supprimer un joueur', unlock:'On peut faire le ménage dans les joueurs.',
+    say:`<p>J'ai généré des faux joueurs pour remplir le hall of fame. Maintenant je veux supprimer <b>Bot_Michel</b>… et la base refuse !</p><p>Quand on supprime un joueur, ses parties doivent disparaître avec lui (§4).</p>`,
+    checks:[
+      chk('Supprimer un joueur supprime ses parties', () => tx(async () => { const j = await tJoueur(); await tPartie(j); await tPartie(j); const r = await attempt('delete from joueur where id = $1', [j]); if (!r.ok) return `Impossible de supprimer un joueur qui a des parties : ${r.msg}`; const n = await one('select count(*)::int as n from partie where joueur_id = $1', [j]); return n.n === 0 ? true : 'Les parties du joueur supprimé sont toujours là.'; })),
+    ]},
+  { titre:'Le catalogue', unlock:'La boutique affiche les bâtiments.',
+    say:`<p>On lance une partie, on clique, on clique… et maintenant je veux <b>acheter un stagiaire</b>. Essaie le bouton « Acheter » de la boutique : boum.</p><p>Il nous faut le catalogue des bâtiments (§5).</p>`,
+    checks:[
+      chk('La table batiment existe', async () => await tableExists('batiment') ? true : 'Table batiment introuvable.', true),
+      chk('Elle a toutes les colonnes attendues', () => colsCheck('batiment', { id:T_INT, nom:T_TXT, cout_base:['integer','bigint','smallint'], production:T_DEC, description:T_TXT }), true),
+      chk('id est une clé primaire attribuée automatiquement', async () => all(await pkIs('batiment', ['id']), await tx(async () => { const r = await attempt(`insert into batiment(nom, cout_base, production) values('zz_test', 10, 1) returning id`); return r.ok && r.rows[0].id != null ? true : `Insertion sans id refusée : ${r.msg}${PKEY_TIP(r.msg)}`; }))),
+      chk('Le nom est obligatoire et unique', () => tx(async () => all(
+        refused(await attempt(`insert into batiment(nom, cout_base, production) values(null, 10, 1)`), 'un bâtiment sans nom'),
+        (await attempt(`insert into batiment(nom, cout_base, production) values('zz_double', 10, 1)`), true),
+        refused(await attempt(`insert into batiment(nom, cout_base, production) values('zz_double', 10, 1)`), 'deux bâtiments portant le même nom')))),
+      chk('Le prix de base est obligatoire et strictement positif', () => tx(async () => all(
+        refused(await attempt(`insert into batiment(nom, cout_base, production) values('zz_a', 0, 1)`), 'un prix de 0'),
+        refused(await attempt(`insert into batiment(nom, cout_base, production) values('zz_b', -5, 1)`), 'un prix négatif'),
+        refused(await attempt(`insert into batiment(nom, cout_base, production) values('zz_c', null, 1)`), 'un prix vide')))),
+      chk('La production est obligatoire, strictement positive, avec une décimale', () => tx(async () => { const r = await attempt(`insert into batiment(nom, cout_base, production) values('zz_d', 10, 0.1) returning production`);
+        return all(
+          refused(await attempt(`insert into batiment(nom, cout_base, production) values('zz_e', 10, 0)`), 'une production de 0'),
+          refused(await attempt(`insert into batiment(nom, cout_base, production) values('zz_f', 10, null)`), 'une production vide'),
+          !r.ok ? `La base refuse une production de 0,1 : ${r.msg}` : Math.abs(Number(r.rows[0].production) - 0.1) < 1e-6 ? true : `Une production de 0,1 est enregistrée comme ${r.rows[0].production}.`); })),
+      chk('Les 8 bâtiments du catalogue sont enregistrés avec les bonnes valeurs', async () => {
+        const rows = await q('select nom, cout_base, production from batiment'); const m = new Map(rows.map(r => [norm(r.nom), r])); const errs = [];
+        for (const [n, c, p] of BATS){ const r = m.get(norm(n)); if (!r) errs.push(`« ${n} » absent`); else if (Number(r.cout_base) !== c || Math.abs(Number(r.production) - p) > 1e-6) errs.push(`« ${n} » : prix ou production incorrects`); }
+        if (rows.length !== BATS.length) errs.push(`${rows.length} bâtiment(s) en base au lieu de ${BATS.length}`);
+        return errs.length ? errs.slice(0, 4).join(' · ') : true; }),
+    ]},
+  { titre:'Acheter des bâtiments', unlock:'Le bouton « Acheter » fonctionne.',
+    say:`<p>La boutique s'affiche ! Mais quand j'achète, ça plante : on ne sait pas où noter <b>combien</b> de bâtiments possède chaque partie (§6).</p>`,
+    checks:[
+      chk('La table possession existe', async () => await tableExists('possession') ? true : 'Table possession introuvable.', true),
+      chk('Elle a toutes les colonnes attendues', () => colsCheck('possession', { partie_id:T_INT, batiment_id:T_INT, quantite:['integer','bigint','smallint'] }), true),
+      chk('partie_id et batiment_id sont des clés étrangères vers les bonnes tables', async () => all(await fkIs('possession', 'partie_id', 'partie', 'id'), await fkIs('possession', 'batiment_id', 'batiment', 'id'))),
+      chk('Une seule ligne par couple (partie, bâtiment), jamais incomplet', async () => all(
+        await uniqueOn('possession', ['partie_id','batiment_id'], "Rien n'empêche d'avoir deux lignes pour la même partie et le même bâtiment."),
+        await tx(async () => { const j = await tJoueur(); const p = await tPartie(j); const b = await tBat(); return all(
+          refused(await attempt('insert into possession(partie_id, batiment_id, quantite) values(null, $1, 1)', [b]), 'une possession sans partie'),
+          refused(await attempt('insert into possession(partie_id, batiment_id, quantite) values($1, null, 1)', [p]), 'une possession sans bâtiment')); }))),
+      chk('La quantité est obligatoire et jamais négative', () => tx(async () => { const j = await tJoueur(); const p = await tPartie(j); const b = await tBat(); const b2 = await tBat(); return all(
+        refused(await attempt('insert into possession(partie_id, batiment_id, quantite) values($1, $2, -1)', [p, b]), 'une quantité de -1'),
+        refused(await attempt('insert into possession(partie_id, batiment_id, quantite) values($1, $2, null)', [p, b2]), 'une quantité vide'),
+        accepted(await attempt('insert into possession(partie_id, batiment_id, quantite) values($1, $2, 0)', [p, b]), 'une quantité de 0')); })),
+      chk('Supprimer une partie supprime ses possessions', () => tx(async () => { const j = await tJoueur(); const p = await tPartie(j); const b = await tBat();
+        await attempt('insert into possession(partie_id, batiment_id, quantite) values($1, $2, 3)', [p, b]);
+        const r = await attempt('delete from partie where id = $1', [p]); if (!r.ok) return `Impossible de supprimer une partie qui possède des bâtiments : ${r.msg}`;
+        const n = await one('select count(*)::int as n from possession where partie_id = $1', [p]); return n.n === 0 ? true : 'Les possessions de la partie supprimée sont toujours là.'; })),
+      chk("Impossible de retirer du catalogue un bâtiment possédé", () => tx(async () => { const j = await tJoueur(); const p = await tPartie(j); const b = await tBat();
+        await attempt('insert into possession(partie_id, batiment_id, quantite) values($1, $2, 3)', [p, b]);
+        return refused(await attempt('delete from batiment where id = $1', [b]), 'la suppression d’un bâtiment possédé'); })),
+    ]},
+  { titre:'Les améliorations', unlock:'Les bonus multiplicateurs.',
+    say:`<p>Les joueurs veulent des <b>bonus</b>, comme dans tous les jeux du genre. Il faut le catalogue des améliorations, et savoir qui a acheté quoi (§7).</p>`,
+    checks:[
+      chk('La table amelioration existe', async () => await tableExists('amelioration') ? true : 'Table amelioration introuvable.', true),
+      chk('Elle a toutes les colonnes attendues', () => colsCheck('amelioration', { id:T_INT, nom:T_TXT, cout:['integer','bigint','smallint'], batiment_id:T_INT, multiplicateur:['integer','bigint','smallint'] }), true),
+      chk('id est une clé primaire attribuée automatiquement', async () => all(await pkIs('amelioration', ['id']), await tx(async () => { await tAmel(); return true; }))),
+      chk('Le nom est obligatoire et unique', () => tx(async () => all(
+        refused(await attempt(`insert into amelioration(nom, cout, multiplicateur) values(null, 10, 2)`), 'une amélioration sans nom'),
+        (await attempt(`insert into amelioration(nom, cout, multiplicateur) values('zz_double', 10, 2)`), true),
+        refused(await attempt(`insert into amelioration(nom, cout, multiplicateur) values('zz_double', 10, 2)`), 'deux améliorations portant le même nom')))),
+      chk('Le prix est obligatoire et strictement positif', () => tx(async () => all(
+        refused(await attempt(`insert into amelioration(nom, cout, multiplicateur) values('zz_a', 0, 2)`), 'un prix de 0'),
+        refused(await attempt(`insert into amelioration(nom, cout, multiplicateur) values('zz_b', null, 2)`), 'un prix vide')))),
+      chk('Le multiplicateur est obligatoire et vaut au moins 2', () => tx(async () => all(
+        refused(await attempt(`insert into amelioration(nom, cout, multiplicateur) values('zz_c', 10, 1)`), 'un multiplicateur de 1'),
+        refused(await attempt(`insert into amelioration(nom, cout, multiplicateur) values('zz_d', 10, null)`), 'un multiplicateur vide'),
+        accepted(await attempt(`insert into amelioration(nom, cout, multiplicateur) values('zz_e', 10, 2)`), 'un multiplicateur de 2')))),
+      chk('Une amélioration concerne un bâtiment existant, ou aucun (le clic)', async () => all(await fkIs('amelioration', 'batiment_id', 'batiment', 'id'),
+        await tx(async () => accepted(await attempt(`insert into amelioration(nom, cout, batiment_id, multiplicateur) values('zz_clic', 10, null, 2)`), 'une amélioration du clic (sans bâtiment)')))),
+      chk('Les 8 améliorations sont enregistrées avec les bonnes valeurs', async () => {
+        const rows = await q('select a.nom, a.cout, a.multiplicateur, b.nom as bat from amelioration a left join batiment b on b.id = a.batiment_id');
+        const m = new Map(rows.map(r => [norm(r.nom), r])); const errs = [];
+        for (const [n, c, b, x] of AMELS){ const r = m.get(norm(n)); if (!r) errs.push(`« ${n} » absente`); else if (Number(r.cout) !== c || Number(r.multiplicateur) !== x || norm(r.bat) !== norm(b)) errs.push(`« ${n} » : valeurs incorrectes`); }
+        if (rows.length !== AMELS.length) errs.push(`${rows.length} amélioration(s) en base au lieu de ${AMELS.length}`);
+        return errs.length ? errs.slice(0, 4).join(' · ') : true; }),
+      chk('La table amelioration_achetee existe avec les colonnes attendues', async () => await tableExists('amelioration_achetee') ? colsCheck('amelioration_achetee', { partie_id:T_INT, amelioration_id:T_INT, date_achat:T_TIME }) : 'Table amelioration_achetee introuvable.', true),
+      chk('Ses clés étrangères pointent vers les bonnes tables', async () => all(await fkIs('amelioration_achetee', 'partie_id', 'partie', 'id'), await fkIs('amelioration_achetee', 'amelioration_id', 'amelioration', 'id'))),
+      chk('Une partie ne peut pas acheter deux fois la même amélioration', async () => all(
+        await uniqueOn('amelioration_achetee', ['partie_id','amelioration_id'], "Rien n'empêche une partie d'acheter deux fois la même amélioration."),
+        await tx(async () => { const a = await tAmel(); return refused(await attempt('insert into amelioration_achetee(partie_id, amelioration_id) values(null, $1)', [a]), 'un achat sans partie'); }))),
+      chk("La date d'achat est obligatoire et automatique, et les achats disparaissent avec la partie", () => tx(async () => { const j = await tJoueur(); const p = await tPartie(j); const a = await tAmel();
+        const r = await attempt('insert into amelioration_achetee(partie_id, amelioration_id) values($1, $2) returning date_achat', [p, a]); if (!r.ok) return r.msg;
+        if (r.rows[0].date_achat == null) return DATE_TIP('date_achat'); { const a2 = await tAmel(); const z = refused(await attempt('insert into amelioration_achetee(partie_id, amelioration_id, date_achat) values($1, $2, null)', [p, a2]), 'un achat sans date'); if (z !== true) return z; }
+        const d = await attempt('delete from partie where id = $1', [p]); if (!d.ok) return `Impossible de supprimer une partie qui a acheté une amélioration : ${d.msg}`;
+        const n = await one('select count(*)::int as n from amelioration_achetee where partie_id = $1', [p]); return n.n === 0 ? true : 'Les achats de la partie supprimée sont toujours là.'; })),
+    ]},
+  { titre:'Les succès', unlock:'Les badges se débloquent.',
+    say:`<p>Sans badges, pas d'objectifs ! Il faut les <b>succès</b> (§8). Attention, eux n'ont pas de numéro : on les reconnaît à leur code.</p>`,
+    checks:[
+      chk('La table succes existe avec les colonnes attendues', async () => await tableExists('succes') ? colsCheck('succes', { code:T_TXT, nom:T_TXT, description:T_TXT }) : 'Table succes introuvable.', true),
+      chk('Le code est la clé primaire', () => pkIs('succes', ['code'])),
+      chk('Le code fait 30 caractères au maximum', () => tx(async () => all(
+        accepted(await attempt(`insert into succes(code, nom, description) values($1, 'n', 'd')`, ['A'.repeat(30)]), 'un code de 30 caractères'),
+        refused(await attempt(`insert into succes(code, nom, description) values($1, 'n', 'd')`, ['B'.repeat(31)]), 'un code de 31 caractères')))),
+      chk('Le nom et la description sont obligatoires', () => tx(async () => all(
+        refused(await attempt(`insert into succes(code, nom, description) values('ZZ_A', null, 'd')`), 'un succès sans nom'),
+        refused(await attempt(`insert into succes(code, nom, description) values('ZZ_B', 'n', null)`), 'un succès sans description')))),
+      chk('Les 8 succès sont enregistrés', async () => {
+        const rows = await q('select code, nom from succes'); const m = new Map(rows.map(r => [r.code, r])); const errs = [];
+        for (const [c, n] of SUCCES){ const r = m.get(c); if (!r) errs.push(`${c} absent`); else if (norm(r.nom) !== norm(n)) errs.push(`${c} : nom incorrect`); }
+        if (rows.length !== SUCCES.length) errs.push(`${rows.length} succès en base au lieu de ${SUCCES.length}`);
+        return errs.length ? errs.slice(0, 4).join(' · ') : true; }),
+      chk('La table succes_obtenu existe avec les colonnes attendues', async () => await tableExists('succes_obtenu') ? colsCheck('succes_obtenu', { partie_id:T_INT, succes_code:T_TXT, date_obtention:T_TIME }) : 'Table succes_obtenu introuvable.', true),
+      chk('Ses clés étrangères pointent vers les bonnes tables', async () => all(await fkIs('succes_obtenu', 'partie_id', 'partie', 'id'), await fkIs('succes_obtenu', 'succes_code', 'succes', 'code'))),
+      chk('Une partie obtient chaque succès une seule fois', async () => all(
+        await uniqueOn('succes_obtenu', ['partie_id','succes_code'], "Rien n'empêche une partie d'obtenir deux fois le même succès."),
+        await tx(async () => { const s = await tSucces(); return refused(await attempt('insert into succes_obtenu(partie_id, succes_code) values(null, $1)', [s]), 'un succès obtenu sans partie'); }))),
+      chk("La date d'obtention est obligatoire et automatique, et les succès disparaissent avec la partie", () => tx(async () => { const j = await tJoueur(); const p = await tPartie(j); const s = await tSucces();
+        const r = await attempt('insert into succes_obtenu(partie_id, succes_code) values($1, $2) returning date_obtention', [p, s]); if (!r.ok) return r.msg;
+        if (r.rows[0].date_obtention == null) return DATE_TIP('date_obtention'); { const s2 = await tSucces(); const z = refused(await attempt('insert into succes_obtenu(partie_id, succes_code, date_obtention) values($1, $2, null)', [p, s2]), 'un succès obtenu sans date'); if (z !== true) return z; }
+        const d = await attempt('delete from partie where id = $1', [p]); if (!d.ok) return `Impossible de supprimer une partie qui a des succès : ${d.msg}`;
+        const n = await one('select count(*)::int as n from succes_obtenu where partie_id = $1', [p]); return n.n === 0 ? true : 'Les succès de la partie supprimée sont toujours là.'; })),
+    ]},
+];
+
+/* ---------------- découpage du script SQL ---------------- */
+function splitSql(src, mysql = false){
+  const out = []; const n = src.length; let cur = '', curLine = null, line = 1, from = 1;
+  const nl = s => (s.match(/\n/g) || []).length;
+  const push = () => { if (curLine != null) out.push({ sql: cur, line: curLine, from }); cur = ''; curLine = null; from = line; };
+  for (let i = 0; i < n; i++){
+    const c = src[i], d = src[i + 1];
+    if ((c === '-' && d === '-') || (mysql && c === '#')){ const j = src.indexOf('\n', i); const end = j < 0 ? n : j; cur += src.slice(i, end); i = end - 1; continue; }
+    if (c === '/' && d === '*'){ const j = src.indexOf('*/', i + 2); const end = j < 0 ? n : j + 2; const ch = src.slice(i, end); line += nl(ch); cur += ch; i = end - 1; continue; }
+    if (c === "'" || c === '"' || (mysql && c === '`')){
+      let j = i + 1; while (j < n){ if (mysql && src[j] === '\\' && c !== '`'){ j += 2; continue; } if (src[j] === c){ if (src[j + 1] === c){ j += 2; continue; } break; } j++; }
+      const ch = src.slice(i, j + 1); if (curLine == null) curLine = line; line += nl(ch); cur += ch; i = j; continue;
+    }
+    if (c === '$' && !mysql){
+      const m = src.slice(i).match(/^\$[A-Za-z_]*\$/);
+      if (m){ const tag = m[0]; const j = src.indexOf(tag, i + tag.length); const end = j < 0 ? n : j + tag.length; const ch = src.slice(i, end); if (curLine == null) curLine = line; line += nl(ch); cur += ch; i = end - 1; continue; }
+    }
+    if (c === ';'){ cur += c; push(); continue; }
+    if (c === '\n') line++;
+    else if (curLine == null && !/\s/.test(c)) curLine = line;
+    cur += c;
+  }
+  push();
+  return out;
+}
+
+/* Ligne exacte d'une erreur : position fournie par PostgreSQL, ou mot cité dans le message */
+function errorLine(st, e, executed){
+  // executed = texte réellement envoyé à PostgreSQL (identique à st.sql, ou traduit depuis MySQL)
+  let idx = -1;
+  const pos = Number(e.position || 0) - 1;
+  if (pos >= 0 && executed === st.sql) idx = pos;
+  if (idx < 0){
+    const m = /at or near "([^"]+)"/.exec(e.message || '');
+    if (m){
+      const tok = m[1].replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const re = new RegExp(/^\w+$/.test(m[1]) ? `\\b${tok}\\b` : tok, 'gi');
+      const code = st.sql.replace(/--[^\n]*|#[^\n]*/g, x => ' '.repeat(x.length));
+      const hits = [...code.matchAll(re)].map(x => x.index);
+      // rang de l'occurrence fautive dans le texte exécuté
+      const rank = pos >= 0 && executed ? [...executed.slice(0, pos).matchAll(re)].length : 0;
+      if (hits.length) idx = hits[Math.min(rank, hits.length - 1)];
+    } else if (/at end of input/.test(e.message || '')) idx = st.sql.trimEnd().length - 1;
+  }
+  if (idx < 0) return st.line;
+  idx = Math.min(idx, Math.max(0, st.sql.trimEnd().length - 1));
+  return st.from + (st.sql.slice(0, idx).match(/\n/g) || []).length;
+}
+
+/* ---------------- traduction MySQL → PostgreSQL ----------------
+   Les étudiants écrivent du MySQL ; on le convertit juste avant l'exécution. */
+function mysqlToPg(sql){
+  const lits = []; let s = ''; const n = sql.length;
+  for (let i = 0; i < n; ){
+    const c = sql[i];
+    if ((c === '-' && sql[i + 1] === '-') || c === '#'){ const j = sql.indexOf('\n', i); i = j < 0 ? n : j; continue; }
+    if (c === '/' && sql[i + 1] === '*'){ const j = sql.indexOf('*/', i + 2); i = j < 0 ? n : j + 2; s += ' '; continue; }
+    if (c === "'" || c === '"'){
+      let j = i + 1, val = '';
+      while (j < n){
+        const d = sql[j];
+        if (d === '\\' && j + 1 < n){ const e = sql[j + 1]; val += ({ n:'\n', t:'\t', r:'\r', '0':'' }[e] ?? e); j += 2; continue; }
+        if (d === c){ if (sql[j + 1] === c){ val += c; j += 2; continue; } break; }
+        val += d; j++;
+      }
+      lits.push(val); s += `\u0001${lits.length - 1}\u0001`; i = j + 1; continue;
+    }
+    if (c === '`'){ const j = sql.indexOf('`', i + 1); const e = j < 0 ? n : j; s += sql.slice(i + 1, e); i = e + 1; continue; }
+    s += c; i++;
+  }
+  const INTS = 'BIGINT|INTEGER|INT|SMALLINT|MEDIUMINT|TINYINT';
+  const t = s.trim();
+  // commandes de consultation propres à MySQL
+  if (/^SHOW\s+TABLES\s*;?$/i.test(t)) return `SELECT table_name AS "Tables" FROM information_schema.tables WHERE table_schema = 'public' ORDER BY 1;`;
+  const desc = t.match(/^(?:DESC|DESCRIBE|SHOW\s+COLUMNS\s+FROM)\s+(\w+)\s*;?$/i);
+  if (desc) return `SELECT column_name AS "Field", data_type AS "Type", is_nullable AS "Null", column_default AS "Default" FROM information_schema.columns WHERE table_schema = 'public' AND table_name = '${desc[1].toLowerCase()}' ORDER BY ordinal_position;`;
+  s = s
+    .replace(/\bCREATE\s+SCHEMA\b/gi, 'CREATE DATABASE')
+    .replace(/\bDROP\s+SCHEMA\b/gi, 'DROP DATABASE')
+    .replace(/\bCREATE\s+DATABASE\s+IF\s+NOT\s+EXISTS\b/gi, 'CREATE DATABASE')
+    .replace(/\b(DEFAULT\s+)?(CHARACTER\s+SET|CHARSET|COLLATE)\s*=?\s*\w+/gi, '')
+    .replace(/\bENGINE\s*=?\s*\w+/gi, '')
+    .replace(/\bROW_FORMAT\s*=?\s*\w+/gi, '')
+    .replace(/\bAUTO_INCREMENT\s*=\s*\d+/gi, '')
+    .replace(/\bCOMMENT\s*=?\s*\u0001\d+\u0001/gi, '')
+    .replace(new RegExp(`(\\w+)\\s+(${INTS})(\\s*\\(\\s*\\d+\\s*\\))?(\\s+UNSIGNED)?([^,()]*?)\\s+AUTO_INCREMENT\\b`, 'gi'), (m, col, ty, p, u, rest) => `${col} ${/^big/i.test(ty) ? 'BIGSERIAL' : 'SERIAL'}${rest}`)
+    .replace(/\bAUTO_INCREMENT\b/gi, '')
+    .replace(new RegExp(`(\\w+)\\s+(${INTS}|DECIMAL|NUMERIC|FLOAT|DOUBLE|REAL)(\\s*\\([^)]*\\))?\\s+UNSIGNED(\\s+ZEROFILL)?`, 'gi'), (m, col, ty, p) => `${col} ${ty}${p || ''} CHECK (${col} >= 0)`)
+    .replace(/\bTINYINT\s*\(\s*1\s*\)/gi, 'SMALLINT')
+    .replace(/\bTINYINT\b/gi, 'SMALLINT')
+    .replace(/\bMEDIUMINT\b/gi, 'INTEGER')
+    .replace(/\b(BIGINT|INTEGER|INT|SMALLINT)\s*\(\s*\d+\s*\)/gi, '$1')
+    .replace(/\bDATETIME(\s*\(\s*\d\s*\))?/gi, 'TIMESTAMP')
+    .replace(/\bDOUBLE\b(?!\s+PRECISION)/gi, 'DOUBLE PRECISION')
+    .replace(/\b(TINY|MEDIUM|LONG)TEXT\b/gi, 'TEXT')
+    .replace(/(\w+)\s+ENUM\s*\(([^)]*)\)/gi, (m, col, vals) => `${col} VARCHAR(255) CHECK (${col} IN (${vals}))`)
+    .replace(/\bON\s+UPDATE\s+CURRENT_TIMESTAMP(\s*\(\s*\))?/gi, '')
+    .replace(/\bCURRENT_TIMESTAMP\s*\(\s*\)/gi, 'CURRENT_TIMESTAMP')
+    .replace(/,\s*UNIQUE\s+(?:KEY|INDEX)\s+(\w+)\s*\(/gi, ', CONSTRAINT $1 UNIQUE (')
+    .replace(/,\s*UNIQUE\s+(?:KEY|INDEX)\s*\(/gi, ', UNIQUE (')
+    .replace(/,\s*(?:FULLTEXT\s+|SPATIAL\s+)?(?:KEY|INDEX)\s+(?:\w+\s*)?\([^)]*\)/gi, '')
+    .replace(/\bUNIQUE\s+KEY\b/gi, 'UNIQUE')
+    .replace(/\bIFNULL\s*\(/gi, 'COALESCE(')
+    .replace(/\bLIMIT\s+(\d+)\s*,\s*(\d+)/gi, 'LIMIT $2 OFFSET $1');
+  if (/^\s*INSERT\s+IGNORE\b/i.test(s)) s = s.replace(/\bINSERT\s+IGNORE\b/i, 'INSERT').replace(/;?\s*$/, ' ON CONFLICT DO NOTHING;');
+  return s.replace(/\u0001(\d+)\u0001/g, (m, k) => `'${lits[k].replace(/'/g, "''")}'`);
+}
+
+/* ---------------- remise à zéro de la base ---------------- */
+async function resetDb(){
+  try { await db.exec('ROLLBACK'); } catch {}
+  const dbs = await q(`select datname from pg_database where datname not in ('postgres','template0','template1')`);
+  for (const d of dbs){ try { await db.exec(`DROP DATABASE "${d.datname.replace(/"/g, '""')}"`); } catch {} }
+  await db.exec(`DO $$ DECLARE r record; BEGIN
+    FOR r IN SELECT nspname FROM pg_namespace WHERE nspname NOT IN ('pg_catalog','information_schema') AND nspname NOT LIKE 'pg\\_%' LOOP
+      EXECUTE format('DROP SCHEMA %I CASCADE', r.nspname); END LOOP; END $$;
+    CREATE SCHEMA public; SET search_path TO public;`);
+  const roles = await q(`select rolname from pg_roles where rolname not like 'pg\\_%' and rolname <> current_user`);
+  for (const r of roles){ try { await db.exec(`DROP ROLE "${r.rolname.replace(/"/g, '""')}"`); } catch {} }
+}
+
+/* ---------------- exécution + évaluation ---------------- */
+let lastRun = null, lastReport = null, running = false, booted = false;
+let crash = null;        // { sql, msg } : dernière erreur rencontrée par le jeu
+let mood = 'neutral', moodTimer = null;
+let MODE = store.get('sc_mode', 'mysql');   // syntaxe écrite par les étudiants : 'mysql' ou 'pg'
+function lineText(src, n){ return (src.split('\n')[n - 1] || '').trim().slice(0, 160); }
+function hintFor(msg, src){
+  const tips = [];
+  if (MODE === 'pg'){
+    if (/AUTO_INCREMENT/i.test(src)) tips.push("AUTO_INCREMENT est du MySQL. En PostgreSQL : id SERIAL PRIMARY KEY.");
+    if (/`/.test(src)) tips.push("Les guillemets inversés ` sont du MySQL. En PostgreSQL, écrivez simplement le nom.");
+    if (/ENGINE\s*=/i.test(src)) tips.push("ENGINE=… est du MySQL : supprimez-le.");
+    if (/DATETIME/i.test(src)) tips.push("DATETIME est du MySQL. En PostgreSQL : TIMESTAMP.");
+    if (tips.length) tips.push("Vous pouvez aussi passer la console en syntaxe MySQL (en haut de l'éditeur).");
+  }
+  if (/at or near "\d{3}"/.test(msg) || /\d \d{3}\b/.test(src)) tips.push("En SQL, un nombre s'écrit sans espace : 1100 et non 1 100.");
+  if (/INSERT has more expressions than target columns/i.test(msg)) tips.push("Trop de valeurs par rapport aux colonnes. Attention : en SQL, la virgule sépare les valeurs, et un nombre décimal s'écrit avec un point (0.1, pas 0,1).");
+  if (/must appear in the GROUP BY clause/i.test(msg)) tips.push("Toutes les colonnes du SELECT qui ne sont pas dans une fonction (SUM, COUNT…) doivent apparaître dans le GROUP BY.");
+  if (/already exists/i.test(msg)) tips.push("Le script est rejoué sur une base vide : vérifiez que vous ne créez pas deux fois le même objet dans le script.");
+  return tips;
+}
+const DEFAULT_SCRIPT = `-- ============================================================
+--  Startup Clicker : la base de données du jeu
+-- ============================================================
+-- À chaque clic sur « Exécuter », ce script est rejoué EN ENTIER
+-- sur une base vide. Complétez-le étape après étape.
+--
+-- 1. Lisez la demande de Kevin (onglet « Le jeu »).
+-- 2. Cherchez les règles utiles dans le cahier des charges.
+-- 3. Écrivez le SQL ci-dessous, exécutez, retournez jouer.
+
+`;
+
+async function runScript(){
+  if (running) return; running = true;
+  const btn = $('#run'); btn.disabled = true; btn.textContent = 'EXÉCUTION…';
+  const src = $('#sql').value; store.set('sc_script', src);
+  const run = { error:null, results:[], count:0, meta:[] };
+  try {
+    await resetDb();
+    const my = MODE === 'mysql';
+    for (const st of splitSql(src, my)){
+      const t = st.sql.replace(/--[^\n]*|\/\*[\s\S]*?\*\//g, '').replace(my ? /#[^\n]*/g : /$^/, '').trim();
+      if (!t || t === ';') continue;
+      if (/^\\/.test(t) || /^use\s/i.test(t) || (my && /^set\s/i.test(t))){ run.meta.push(st.line); continue; }
+      const sql = my ? mysqlToPg(st.sql) : st.sql;
+      try {
+        const res = await db.exec(sql); run.count++;
+        if (my && /^\s*(insert|replace)\b/i.test(sql.replace(/^\s*(--[^\n]*\n\s*)*/, ''))) await syncCounters();
+        const last = res[res.length - 1];
+        if (last && last.fields && last.fields.length) run.results.push({ line: st.line, res: last });
+      } catch(e){ run.error = { line: errorLine(st, e, sql), msg: e.message, near: lineText(src, errorLine(st, e, sql)), pg: my ? sql.trim() : null, hint: hintFor(e.message, st.sql) }; break; }
+    }
+    try { await db.exec(run.error ? 'ROLLBACK' : 'COMMIT'); } catch {}
+    lastReport = await evaluate();
+  } catch(e){ run.error = { line: '?', msg: e.message }; lastReport = lastReport || { level:0, rep:[] }; }
+  const before = LEVEL;
+  LEVEL = lastReport.level;
+  await scoreOnLevel(LEVEL);
+  lastRun = run; crash = null; succesFail = new Set();
+  await resync();
+  if (booted && LEVEL > before){
+    setMood('happy', 6000);
+    for (let k = before; k < LEVEL; k++) toast(`ÉTAPE ${k + 1} VALIDÉE`, LEVELS[k].unlock);
+  }
+  renderAll();
+  btn.disabled = false; btn.textContent = 'EXÉCUTER ▶'; running = false;
+}
+
+/* MySQL fait avancer le compteur AUTO_INCREMENT quand on insère un id à la main ; PostgreSQL non.
+   En mode MySQL, on reproduit le comportement de MySQL après chaque INSERT. */
+async function syncCounters(){
+  try { await db.exec(`DO $$ DECLARE r record; m bigint; BEGIN
+    FOR r IN SELECT c.table_name::text AS t, c.column_name::text AS col, pg_get_serial_sequence(format('%I', c.table_name), c.column_name) AS seq
+      FROM information_schema.columns c WHERE c.table_schema = 'public' AND c.table_name IN (SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE') LOOP
+      IF r.seq IS NOT NULL THEN EXECUTE format('SELECT max(%I) FROM %I', r.col, r.t) INTO m; IF m IS NOT NULL THEN PERFORM setval(r.seq, m); END IF; END IF;
+    END LOOP; END $$;`); } catch {}
+}
+
+async function evaluate(){
+  const rep = []; let level = 0;
+  for (let k = 0; k < LEVELS.length; k++){
+    const L = LEVELS[k]; const res = []; let gated = false;
+    for (const c of L.checks){
+      if (gated){ res.push({ label:c.label, state:'sk' }); continue; }
+      let r; try { r = await c.fn(); } catch(e){ r = e.message || String(e); }
+      try { await db.exec('ROLLBACK'); } catch {}
+      res.push({ label:c.label, state: r === true ? 'ok' : 'ko', detail: r === true ? '' : r });
+      if (r !== true && c.gate) gated = true;
+    }
+    const ok = res.every(x => x.state === 'ok');
+    rep.push({ k, res, ok });
+    if (!ok) break;
+    level = k + 1;
+  }
+  return { level, rep };
+}
+
+/* ---------------- état du jeu ---------------- */
+const BLANK = () => ({ pseudo:null, joueurId:null, partieId:null, nomStartup:null, lignes:0, total:0, clics:0, owned:{}, upgrades:[], succes:[] });
+let G = BLANK();
+let CAT = { bats:[], amels:[], succes:[] };
+let playing = false, saveInfo = '', startErr = '', pickPlayer = null;
+
+function persist(){ if (has(2) && playing) store.set('sc_game', G); }
+async function attempt0(sql, params){ try { return (await db.query(sql, params)).rows; } catch { return null; } }
+async function tryQuery(sql, params = []){ try { await db.query(sql, params); return null; } catch(e){ return e.message; } }
+function setCrash(sql, msg){ crash = { sql, msg }; setMood('panic', 0); renderKevin(); }
+function setMood(m, ms){ mood = m; clearTimeout(moodTimer); if (ms) moodTimer = setTimeout(() => { mood = crash ? 'panic' : 'neutral'; renderKevin(); }, ms); }
+
+async function loadCatalogs(){
+  CAT = { bats:[], amels:[], succes:[] };
+  if (has(4)) CAT.bats = ((await attempt0('select * from batiment order by cout_base, id')) || []).map(b => ({ ...b, key: norm(b.nom), cout_base: Number(b.cout_base), production: Number(b.production) }));
+  if (has(6)) CAT.amels = ((await attempt0('select a.*, b.nom as bat_nom from amelioration a left join batiment b on b.id = a.batiment_id order by a.cout, a.id')) || []).map(a => ({ ...a, cout: Number(a.cout), multiplicateur: Number(a.multiplicateur), batKey: a.bat_nom ? norm(a.bat_nom) : null, key: norm(a.nom) }));
+  if (has(7)) CAT.succes = (await attempt0('select * from succes order by code')) || [];
+}
+
+/* Faux joueurs générés par Kevin pour remplir le hall of fame */
+const RIVALS = [
+  { pseudo:'Ada_L', startup:'Lovelace Labs', rate:150, total:1840000, owned:{ 'stagiaire':40, 'machine a cafe':25, 'developpeur junior':12 } },
+  { pseudo:'Linus', startup:'Kernel & Co', rate:40, total:356000, owned:{ 'stagiaire':18, 'machine a cafe':9 } },
+  { pseudo:'Grace_H', startup:'Bug Hunters', rate:6, total:48200, owned:{ 'stagiaire':8, 'machine a cafe':3 } },
+  { pseudo:'Bot_Michel', startup:'Michel Michel SARL', total:7400, owned:{ 'stagiaire':3 } },
+  { pseudo:'Bot_Sandrine', startup:'Sandrine.io', rate:1, total:1250, owned:{} },
+  { pseudo:'Kevin_CEO', startup:'Disrupt AI Blockchain', total:12, owned:{} },
+];
+async function seedRivals(){
+  for (const r of RIVALS){
+    if (G.pseudo && norm(G.pseudo) === norm(r.pseudo)) continue;
+    const j = (await attempt0('insert into joueur(pseudo) values($1) returning id', [r.pseudo]))?.[0]?.id; if (!j) continue;
+    const p = (await attempt0('insert into partie(joueur_id, nom_startup, lignes_code, total_lignes, nb_clics) values($1, $2, $3, $3, $4) returning id', [j, r.startup, r.total, Math.round(r.total / 50)]))?.[0]?.id;
+    if (p && has(5)) for (const b of CAT.bats){ const n = r.owned[b.key]; if (n) await attempt0('insert into possession(partie_id, batiment_id, quantite) values($1, $2, $3)', [p, b.id, n]); }
+  }
+}
+
+/* Après chaque exécution : on remet la partie en cours dans la nouvelle base */
+async function resync(){
+  await loadCatalogs();
+  if (!has(2)) store.del('sc_game');
+  if (!has(0)){ G = BLANK(); playing = false; pickPlayer = null; return; }
+  if (!has(1)){
+    // D'autres joueurs s'inscrivent… et sans règles, c'est le désordre.
+    for (const p of ['Neo', 'Trinity', 'Neo', null]) await attempt0('insert into joueur(pseudo) values($1)', [p]);
+  }
+  if (has(2)){
+    await seedRivals();
+    const sql = `DELETE FROM joueur WHERE pseudo = 'Bot_Michel';`;
+    if (!has(3)){
+      await db.exec('BEGIN');
+      const r = await attempt('delete from joueur where pseudo = $1', ['Bot_Michel']);
+      try { await db.exec('ROLLBACK'); } catch {}
+      if (!r.ok) setCrash(sql, r.msg);
+    } else await attempt0('delete from joueur where pseudo = $1', ['Bot_Michel']);
+  }
+  if (!playing || !G.pseudo) return;
+  G.joueurId = null; G.partieId = null;
+  if (has(1)){
+    let r = await attempt0('insert into joueur(pseudo) values($1) returning id', [G.pseudo]);
+    if (!r) r = await attempt0('select id from joueur where pseudo = $1', [G.pseudo]);
+    G.joueurId = r?.[0]?.id ?? null;
+    if (G.joueurId == null){ playing = false; return; }
+  } else await attempt0('insert into joueur(pseudo) values($1)', [G.pseudo]);
+  if (has(2)){
+    const r = G.nomStartup
+      ? await attempt0('insert into partie(joueur_id, nom_startup, lignes_code, total_lignes, nb_clics) values($1, $2, $3, $4, $5) returning *', [G.joueurId, G.nomStartup, Math.floor(G.lignes), Math.floor(G.total), G.clics])
+      : await attempt0('insert into partie(joueur_id, lignes_code, total_lignes, nb_clics) values($1, $2, $3, $4) returning *', [G.joueurId, Math.floor(G.lignes), Math.floor(G.total), G.clics]);
+    G.partieId = r?.[0]?.id ?? null; if (r?.[0]) G.nomStartup = r[0].nom_startup;
+  } else G.nomStartup = null;
+  if (has(5) && G.partieId){ for (const b of CAT.bats){ const n = G.owned[b.key]; if (n) await attempt0('insert into possession(partie_id, batiment_id, quantite) values($1, $2, $3)', [G.partieId, b.id, n]); } }
+  else G.owned = {};
+  if (has(6) && G.partieId){ G.upgrades = G.upgrades.filter(k => CAT.amels.some(a => a.key === k)); for (const a of CAT.amels){ if (G.upgrades.includes(a.key)) await attempt0('insert into amelioration_achetee(partie_id, amelioration_id) values($1, $2)', [G.partieId, a.id]); } }
+  else G.upgrades = [];
+  if (has(7) && G.partieId){ G.succes = G.succes.filter(c => CAT.succes.some(s => s.code === c)); for (const c of G.succes) await attempt0('insert into succes_obtenu(partie_id, succes_code) values($1, $2)', [G.partieId, c]); }
+  else G.succes = [];
+  persist();
+}
+
+/* ---------------- calculs ---------------- */
+const mult = key => CAT.amels.filter(a => G.upgrades.includes(a.key) && a.batKey === key).reduce((m, a) => m * a.multiplicateur, 1);
+const perClick = () => has(6) ? mult(null) : 1;
+const perSec = () => has(5) ? CAT.bats.reduce((s, b) => s + b.production * (G.owned[b.key] || 0) * mult(b.key), 0) : 0;
+const price = b => Math.ceil(b.cout_base * Math.pow(1.15, G.owned[b.key] || 0));
+function fmt(n, dec = 0){
+  n = Number(n) || 0;
+  if (n >= 1e9) return (n / 1e9).toLocaleString('fr-FR', { maximumFractionDigits: 2 }) + ' Md';
+  if (n >= 1e6) return (n / 1e6).toLocaleString('fr-FR', { maximumFractionDigits: 2 }) + ' M';
+  return n.toLocaleString('fr-FR', { maximumFractionDigits: dec });
+}
+
+/* ---------------- actions ---------------- */
+async function startGame(pseudo, nomStartup){
+  startErr = ''; pseudo = (pseudo || '').trim();
+  const sql = `INSERT INTO joueur (pseudo) VALUES ('${pseudo.replace(/'/g, "''")}');`;
+  if (!has(0)){
+    // Le formulaire existe déjà… la base, non.
+    const dbOk = await one(`select 1 from pg_database where datname = 'startup_clicker'`);
+    if (!dbOk){ setCrash('connexion à startup_clicker', 'FATAL: database "startup_clicker" does not exist'); renderGame(); return; }
+    await db.exec('BEGIN'); const r = await attempt('insert into joueur(pseudo) values($1)', [pseudo]); try { await db.exec('ROLLBACK'); } catch {}
+    const firstKo = lastReport?.rep?.[0]?.res?.find(c => c.state === 'ko');
+    setCrash(sql, r.ok ? (firstKo?.detail || 'La base n\'est pas encore prête.') : 'ERROR: ' + r.msg); renderGame(); return;
+  }
+  let rows;
+  try { rows = (await db.query(has(1) ? 'insert into joueur(pseudo) values($1) returning id' : 'insert into joueur(pseudo) values($1)', [pseudo])).rows; }
+  catch(e){
+    startErr = e.code === '23505' ? `🛡️ Ta base refuse : le pseudo « ${pseudo} » est déjà pris. Choisis-le dans « Continuer en tant que… ».` : `🛡️ Ta base refuse ce pseudo : ${e.message}${explain(e.message)}`;
+    renderGame(); return;
+  }
+  G = BLANK(); G.pseudo = pseudo; G.joueurId = rows[0]?.id ?? null;
+  await createPartie(nomStartup);
+}
+async function createPartie(nomStartup){
+  if (has(2)){
+    nomStartup = (nomStartup || '').trim();
+    try {
+      const r = nomStartup
+        ? (await db.query('insert into partie(joueur_id, nom_startup) values($1, $2) returning *', [G.joueurId, nomStartup])).rows
+        : (await db.query('insert into partie(joueur_id) values($1) returning *', [G.joueurId])).rows;
+      G.partieId = r[0].id; G.nomStartup = r[0].nom_startup;
+    } catch(e){ startErr = `🛡️ Ta base refuse cette startup : ${e.message}${explain(e.message)}`; renderGame(); return; }
+  } else G.nomStartup = null;
+  G.lignes = 0; G.total = 0; G.clics = 0; G.owned = {}; G.upgrades = []; G.succes = [];
+  playing = true; pickPlayer = null; startErr = ''; persist(); renderGame();
+}
+async function choosePlayer(id, pseudo){
+  startErr = '';
+  if (has(2)){ pickPlayer = { id, pseudo, parties: (await attempt0('select id, nom_startup, total_lignes from partie where joueur_id = $1 order by id', [id])) || [] }; }
+  else { G = BLANK(); G.pseudo = pseudo; G.joueurId = id; playing = true; pickPlayer = null; }
+  renderGame();
+}
+async function resumePartie(pid){
+  const p = await one('select * from partie where id = $1', [pid]); if (!p) return;
+  const j = await one('select id, pseudo from joueur where id = $1', [p.joueur_id]);
+  G = BLANK(); G.pseudo = j.pseudo; G.joueurId = j.id; G.partieId = p.id; G.nomStartup = p.nom_startup;
+  G.lignes = Number(p.lignes_code); G.total = Number(p.total_lignes); G.clics = Number(p.nb_clics);
+  if (has(5)) for (const r of (await attempt0('select b.nom, po.quantite from possession po join batiment b on b.id = po.batiment_id where po.partie_id = $1', [pid])) || []) G.owned[norm(r.nom)] = Number(r.quantite);
+  if (has(6)) for (const r of (await attempt0('select a.nom from amelioration_achetee aa join amelioration a on a.id = aa.amelioration_id where aa.partie_id = $1', [pid])) || []) G.upgrades.push(norm(r.nom));
+  if (has(7)) for (const r of (await attempt0('select succes_code from succes_obtenu where partie_id = $1', [pid])) || []) G.succes.push(r.succes_code);
+  playing = true; pickPlayer = null; persist(); renderGame();
+}
+async function quit(){ await save(); playing = false; pickPlayer = null; G = BLANK(); store.del('sc_game'); renderGame(); }
+
+async function save(){
+  if (!playing || !has(2) || !G.partieId) return;
+  try {
+    await db.query('update partie set lignes_code = $1, total_lignes = $2, nb_clics = $3 where id = $4', [Math.floor(G.lignes), Math.floor(G.total), G.clics, G.partieId]);
+    saveInfo = '💾 Sauvegardé à ' + new Date().toLocaleTimeString('fr-FR');
+  } catch(e){ saveInfo = 'Échec de la sauvegarde : ' + e.message; }
+  persist();
+  const el = $('#saveinfo'); if (el) el.textContent = saveInfo;
+}
+
+async function buy(id){
+  if (!has(4)){ const m = await tryQuery('select * from batiment'); setCrash('SELECT * FROM batiment;', 'ERROR: ' + (m || 'catalogue incomplet')); return; }
+  const b = CAT.bats.find(x => x.id === id); if (!b) return;
+  const cost = price(b); if (G.lignes < cost) return;
+  const sql = `INSERT INTO possession (partie_id, batiment_id, quantite) VALUES (${G.partieId}, ${b.id}, 1) ON CONFLICT (partie_id, batiment_id) DO UPDATE SET quantite = possession.quantite + 1;`;
+  try {
+    if (!has(5)){
+      const m = await tryQuery(`insert into possession(partie_id, batiment_id, quantite) values($1, $2, 1) on conflict (partie_id, batiment_id) do update set quantite = possession.quantite + 1`, [G.partieId, b.id]);
+      setCrash(sql, 'ERROR: ' + (m || "la table possession n'est pas encore conforme au cahier des charges")); return;
+    }
+    await db.query(`insert into possession(partie_id, batiment_id, quantite) values($1, $2, 1)
+      on conflict (partie_id, batiment_id) do update set quantite = possession.quantite + 1`, [G.partieId, b.id]);
+    G.lignes -= cost; G.owned[b.key] = (G.owned[b.key] || 0) + 1;
+    await save(); renderShop(); renderAmels(); renderHall(); tickUI();
+  } catch(e){ setCrash(sql, 'ERROR: ' + e.message); }
+}
+async function buyUpgrade(id){
+  const a = CAT.amels.find(x => x.id === id); if (!a || G.lignes < a.cout || G.upgrades.includes(a.key)) return;
+  try {
+    await db.query('insert into amelioration_achetee(partie_id, amelioration_id) values($1, $2)', [G.partieId, a.id]);
+    G.lignes -= a.cout; G.upgrades.push(a.key); await save();
+    toast(a.nom, a.batKey ? `Production des « ${a.bat_nom} » ×${a.multiplicateur}` : `Lignes par clic ×${a.multiplicateur}`); renderAmels(); renderShop(); tickUI();
+  } catch(e){ setCrash('INSERT INTO amelioration_achetee …', 'ERROR: ' + e.message); }
+}
+async function tryLocked(kind){
+  const map = { amel:['SELECT * FROM amelioration;', 'select * from amelioration'], succes:['SELECT * FROM succes;', 'select * from succes'] };
+  const [show, sql] = map[kind]; const m = await tryQuery(sql);
+  setCrash(show, 'ERROR: ' + (m || "la table existe mais n'est pas encore conforme au cahier des charges"));
+}
+let succesFail = new Set();
+async function checkSucces(){
+  if (!playing || !has(7) || !G.partieId) return;
+  for (const s of CAT.succes){
+    if (G.succes.includes(s.code)) continue;
+    const cond = SUCCES_COND[s.code]; if (!cond || !cond(G)) continue;
+    try { await db.query('insert into succes_obtenu(partie_id, succes_code) values($1, $2)', [G.partieId, s.code]); G.succes.push(s.code); toast('★ ' + s.nom, s.description); renderSucces(); }
+    catch(e){
+      // Si c'est un doublon, le succès est déjà en base : on l'affiche. Sinon on montre l'erreur de la base.
+      if (e.code === '23505'){ G.succes.push(s.code); renderSucces(); }
+      else if (!succesFail.has(s.code)){ succesFail.add(s.code); setCrash(`INSERT INTO succes_obtenu (partie_id, succes_code) VALUES (${G.partieId}, '${s.code}');`, 'ERROR: ' + e.message); }
+    }
+  }
+}
+
+/* ---------------- Kevin (sprite pixel art original) ---------------- */
+const KPAL = { k:'#0A0B1E', h:'#7A4520', s:'#F2C79B', g:'#0A0B1E', w:'#FFFFFF', b:'#3B82F6', d:'#1E4FA8', y:'#FFD23F', m:'#9B2F3A', r:'#FF8A8A', t:'#5BC0FF' };
+const KBASE = [
+  '.....kkkkkk.....','...kkhhhhhhkk...','..khhhhhhhhhhk..','..khhshhhhshhk..','..khsssssssshk..',
+  '..kgwwgssgwwgk..','..kgwkgssgwkgk..','..kssssssssssk..', null, null,
+  '...kssssssssk...','....kkksskkk....','..kkbbbbbbbbkk..','.kbbbdbyybdbbbk.','.kbbbdbyybdbbbk.','.kbbbbbbbbbbbbk.'
+];
+const KMOUTH = {
+  neutral:['..kssssssssssk..','..ksssmmmmsssk..'],
+  happy:  ['..ksmssssssmsk..','..kssmmmmmmssk..'],
+  panic:  ['..krssskksssrk..','..ksssskksssstk.'],
+};
+function drawKevin(cv, m){
+  const rows = KBASE.slice(); const mm = KMOUTH[m] || KMOUTH.neutral; rows[8] = mm[0]; rows[9] = mm[1];
+  if (m === 'panic'){ rows[5] = '..kgwwgssgwwgk..'; rows[6] = '..kgwwgssgwwgk..'; }
+  const c = cv.getContext('2d'); cv.width = 16; cv.height = 16; c.clearRect(0, 0, 16, 16);
+  rows.forEach((row, y) => [...row].forEach((ch, x) => { if (ch !== '.' && KPAL[ch]){ c.fillStyle = KPAL[ch]; c.fillRect(x, y, 1, 1); } }));
+}
+
+function kevinHTML(compact){
+  const k = LEVEL;
+  let body;
+  if (k >= LEVELS.length) body = `<span class="step">MISSION ACCOMPLIE</span><p>C'est fait, mon click center est une licorne ! Merci l'équipe.</p><p>Tu peux continuer à faire grandir ta startup : la base que tu as construite tient la route !</p>`;
+  else {
+    body = `<span class="step">ÉTAPE ${k + 1}/${LEVELS.length} · ${esc(LEVELS[k].titre.toUpperCase())}</span>${LEVELS[k].say}`;
+    if (crash) body += `<div class="crashmsg">💥 ${esc(crash.sql)}<br>${esc(crash.msg)}</div>`;
+    if (!compact){
+      const res = lastReport?.rep?.[k]?.res;
+      const tried = res && res.some(c => c.state !== 'sk') && lastRun;
+      if (tried){
+        body += `<p style="margin-top:10px"><b>J'ai testé ta base :</b></p><ul style="margin:0;padding-left:0;list-style:none">${res.map(c => `<li>${c.state === 'ok' ? '🛡️' : c.state === 'ko' ? '💥' : '⬜'} ${esc(c.label)}${c.state === 'ko' && c.detail ? ` <span style="color:#B3263A">— ${esc(c.detail)}</span>` : ''}</li>`).join('')}</ul>`;
+      }
+      body += `<div class="actions"><button class="pbtn alt" data-go="sql">OUVRIR LA CONSOLE SQL</button><button class="pbtn ghost" data-go="spec">CAHIER DES CHARGES</button></div>`;
+    }
+  }
+  return `<div class="kevin px ${compact ? 'compact' : ''}"><div><canvas class="kv" width="16" height="16" aria-label="Kevin, le patron"></canvas><div class="who">KEVIN</div></div><div class="bubble">${body}</div></div>`;
+}
+function renderKevin(){
+  const g = $('#kevin-game'); if (g) g.innerHTML = kevinHTML(false);
+  const c = $('#kevin-sql'); if (c) c.innerHTML = kevinHTML(true);
+  document.querySelectorAll('canvas.kv').forEach(cv => drawKevin(cv, mood));
+}
+
+/* ---------------- rendu : jauge ---------------- */
+function renderLevels(){
+  $('#lvl-label').textContent = LEVEL >= LEVELS.length ? 'TERMINÉ !' : `ÉTAPE ${LEVEL + 1}/${LEVELS.length}`;
+  $('#pips').innerHTML = LEVELS.map((L, i) => `<span class="pip ${i < LEVEL ? 'done' : i === LEVEL ? 'cur' : ''}" title="${i < LEVEL ? esc(L.titre) : 'Étape ' + (i + 1)}"></span>`).join('');
+}
+
+/* ---------------- rendu : console ---------------- */
+function renderConsole(){
+  const o = $('#out'); const r = lastRun; let h = '';
+  if (r){
+    if (r.error){
+      h += `<div class="err"><b>Erreur ligne ${r.error.line}</b> : ${esc(r.error.msg)}${r.error.near ? `<br><code style="color:#fff">${r.error.line} | ${esc(r.error.near)}</code>` : ''}<br><small>Les instructions suivantes n'ont pas été exécutées.</small></div>`;
+      for (const tip of r.error.hint || []) h += `<p class="note">💡 ${esc(tip)}</p>`;
+      if (r.error.pg) h += `<details class="box"><summary>Voir l'instruction telle qu'elle a été exécutée</summary><div><p class="note">La console convertit votre MySQL pour son moteur interne. Voici le résultat de la conversion :</p><pre style="white-space:pre-wrap;font-size:12px;margin:0">${esc(r.error.pg)}</pre></div></details>`;
+    }
+    else h += `<div class="okline">${r.count} instruction(s) exécutée(s) sans erreur.</div>`;
+    if (r.meta.length) h += `<p class="note">Ligne(s) ${r.meta.join(', ')} ignorée(s) : la console est déjà connectée à votre base, pas besoin de <code>\\c</code> ni de <code>USE</code>.</p>`;
+    for (const x of r.results.slice(-3)){
+      const f = x.res.fields.map(f => f.name);
+      h += `<div><p class="note">Résultat de la requête ligne ${x.line} (${x.res.rows.length} ligne(s))</p><div class="scroll-x"><table class="grid"><thead><tr>${f.map(n => `<th>${esc(n)}</th>`).join('')}</tr></thead><tbody>${x.res.rows.slice(0, 50).map(row => `<tr>${f.map(n => cell(row[n])).join('')}</tr>`).join('')}</tbody></table></div></div>`;
+    }
+  }
+  o.innerHTML = h;
+  const rep = lastReport?.rep || [];
+  let m = `<div id="kevin-sql"></div><div id="score-box"></div><div class="lvllist">`;
+  LEVELS.forEach((L, i) => {
+    if (i < LEVEL) m += `<div class="lvl done"><div class="lh"><span class="n">${i + 1}</span>${esc(L.titre)}<span class="st">OK</span></div></div>`;
+    else if (i === LEVEL){
+      const res = rep[i]?.res || L.checks.map(c => ({ label:c.label, state:'sk' }));
+      m += `<div class="lvl cur"><div class="lh"><span class="n">${i + 1}</span>${esc(L.titre)}<span class="st">EN COURS</span></div><ul class="checks">${res.map(c => `<li class="${c.state}"><span class="i">${c.state === 'ok' ? '✓' : c.state === 'ko' ? '✗' : '·'}</span><span>${esc(c.label)}${c.detail ? `<span class="d">${esc(c.detail)}</span>` : ''}</span></li>`).join('')}</ul></div>`;
+    }
+    else m += `<div class="lvl lock"><div class="lh"><span class="n">${i + 1}</span>🔒 Étape verrouillée</div></div>`;
+  });
+  m += `</div>`;
+  m += `<details class="box"><summary>Structure actuelle de votre base</summary><div id="schema">…</div></details>`;
+  m += MEMO[MODE];
+  $('#mission').innerHTML = m;
+  renderScore();
+  renderSchema();
+}
+const MEMO = {
+  mysql: `<details class="box memo"><summary>Aide-mémoire MySQL</summary><div>
+<pre>CREATE DATABASE nom_base;
+
+CREATE TABLE t (
+  id       INT AUTO_INCREMENT PRIMARY KEY,
+  nom      VARCHAR(30) NOT NULL UNIQUE,
+  prix     INT CHECK (prix > 0),
+  actif    BOOLEAN DEFAULT TRUE,        -- valeur par défaut
+  autre_id INT,
+  FOREIGN KEY (autre_id) REFERENCES autre(id)
+    ON DELETE CASCADE
+);
+
+-- clé primaire sur plusieurs colonnes
+PRIMARY KEY (a_id, b_id)
+
+INSERT INTO t (nom, prix) VALUES ('A', 10), ('B', 20);
+
+CREATE VIEW v AS SELECT ... ;</pre>
+<p>Types utiles : INT, BIGINT, DECIMAL(10,1), VARCHAR(n), TEXT, DATETIME. <code>SHOW TABLES;</code> et <code>DESCRIBE t;</code> fonctionnent aussi.</p></div></details>`,
+  pg: `<details class="box memo"><summary>Aide-mémoire PostgreSQL</summary><div>
+<pre>CREATE DATABASE nom_base;
+
+CREATE TABLE t (
+  id       SERIAL PRIMARY KEY,          -- numéro automatique
+  nom      VARCHAR(30) NOT NULL UNIQUE,
+  prix     INTEGER CHECK (prix > 0),
+  actif    BOOLEAN DEFAULT TRUE,        -- valeur par défaut
+  autre_id INTEGER REFERENCES autre(id) ON DELETE CASCADE
+);
+
+-- clé primaire sur plusieurs colonnes
+PRIMARY KEY (a_id, b_id)
+
+INSERT INTO t (nom, prix) VALUES ('A', 10), ('B', 20);
+
+CREATE VIEW v AS SELECT ... ;</pre>
+<p>Types utiles : INTEGER, BIGINT, NUMERIC(10,1), VARCHAR(n), TEXT, TIMESTAMP. Une apostrophe dans un texte s'écrit en double : <code>'l''ordinateur'</code>.</p></div></details>`
+};
+function cell(v){ if (v === null || v === undefined) return `<td class="null">NULL</td>`; if (v instanceof Date) return `<td>${esc(v.toLocaleString('fr-FR'))}</td>`; return `<td>${esc(typeof v === 'object' ? JSON.stringify(v) : v)}</td>`; }
+async function renderSchema(){
+  const el = $('#schema'); if (!el || !db) return;
+  try {
+    const tabs = await q(`select table_name::text as t, table_type::text as k from information_schema.tables where table_schema='public' order by table_name`);
+    const dbs = await q(`select datname::text as d from pg_database where datname not in ('postgres','template0','template1')`);
+    let h = `<p>Base(s) créée(s) : ${dbs.length ? dbs.map(d => `<code>${esc(d.d)}</code>`).join(', ') : 'aucune'}</p>`;
+    if (!tabs.length) h += `<p>Aucune table pour l'instant.</p>`;
+    for (const t of tabs){
+      const cols = await q(`select column_name::text as c, data_type::text as ty, is_nullable::text as n, column_default::text as df from information_schema.columns where table_schema='public' and table_name=$1 order by ordinal_position`, [t.t]);
+      const cons = await q(`select pg_get_constraintdef(c.oid) as def from pg_constraint c join pg_class r on r.oid=c.conrelid join pg_namespace n on n.oid=r.relnamespace where n.nspname='public' and r.relname=$1 order by c.contype`, [t.t]);
+      h += `<div class="schema-t"><h4>${t.k === 'VIEW' ? 'vue ' : ''}${esc(t.t)}</h4><ul>${cols.map(c => `<li>${esc(c.c)} : ${esc(c.ty)}${c.n === 'NO' ? ' NOT NULL' : ''}${c.df ? ' DEFAULT ' + esc(c.df) : ''}</li>`).join('')}${cons.map(c => `<li>${esc(c.def)}</li>`).join('')}</ul></div>`;
+    }
+    el.innerHTML = h;
+  } catch(e){ el.textContent = e.message; }
+}
+
+/* ---------------- rendu : jeu ---------------- */
+const SNIPPETS = ["const startup = new Startup(\"licorne\");","if (cafe.niveau < 1) stagiaire.reveiller();","await investisseurs.convaincre({ slides: 42 });","// TODO : corriger ce bug avant la démo","function pivoter() { return \"IA + blockchain\"; }","while (!rentable) { leverDesFonds(); }","git commit -m \"fix: ça marche sur ma machine\"","SELECT * FROM idees WHERE bonnes = true; -- 0 ligne","deploy --env=prod --le-vendredi-a=17h","catch (e) { /* on verra lundi */ }","const bug = feature.renommer(\"comportement attendu\");","npm install motivation --save","if (client.estContent()) client.estSuspect();","while (true) { réunion.planifier(\"point rapide\"); }","const deadline = new Date(\"hier\");","try { comprendreLeBesoin(); } catch { demanderUnCahierDesCharges(); }","git push --force origin main // YOLO","const budget = Infinity;\nconst salaire = budget / 1000000;","if (çaMarche) nePasToucher();","await designer.valider(couleur.hex(\"#000000\"));","SELECT COUNT(*) FROM bugs WHERE corrigé = 1; -- 847","const roadmap = [\"IA\", \"IA avec IA\", \"IA mais en mieux\"];","function estimerProjet() { return Math.random() * 3 + \" jours\"; }","if (production.estStable()) deployerNouvelleVersion();","const stagiaire = new Développeur({ expérience: 12, salaire: 0 });","npm install confiance --save-dev","while (!compris) { client.expliquerAutrement(); }","const réunion = new Réunion({ durée: 15, réelle: 120 });","git blame -L 42,42 index.php // c'est toujours Gérard","if (bug.reproductible) bug.disparaître();","await api.fetch(\"https://ça-marche-chez-moi.fr\");","const motDePasse = \"123456\"; // temporairement depuis 2014","docker run --name espoir -p 80:8080 optimism:latest","function agile() { return \"on change tout tous les matins\"; }","if (client.demandeSimple()) architecture.microservices(42);","const documentation = \"à jour\"; // TODO: écrire","SELECT * FROM développeurs WHERE patience > 0; -- Empty set","await production.restart({ raison: \"ça faisait longtemps\" });","const IA = new IA({ intelligence: \"artificielle\", intelligenceReelle: 0 });","throw new Error(\"C'est pas un bug, c'est une feature premium\");","git commit -m \"wip\" && git commit -m \"wip final\" && git commit -m \"wip final 2\"","if (deadline < maintenant) deadline = demain;","const client = await new Client().fetch({ compréhension: false });","for (const dev of équipe) dev.donnerSonAvis(); // Personne ne code","const architecture = new Architecture(\"simple\").addMicroservices(37);","await serveur.redémarrer({ motif: \"il a besoin de réfléchir\" });","if (code.length > 0) console.log(\"Ça devrait fonctionner\");","SELECT * FROM utilisateurs WHERE mot_de_passe = 'password';","const bug = new Bug({ priorité: \"basse\", impact: \"apocalyptique\" });","function optimiser() { return code.replace(\"lent\", \"rapide\"); }","await client.attendre({ délai: \"immédiat\" });","const junior = new Senior({ expérience: \"3 semaines\" });","while (budget > 0) agence.facturer(\"petite modification\");","git checkout vendredi && git checkout lundi;","if (tests.passed === false) console.log(\"Les tests sont probablement faux\");","const sprint = new Sprint({ vitesse: 0, vélocité: \"énorme\" });","await café.injecter(developpeur, { dose: \"critique\" });","const password = process.env.PASSWORD || \"azerty\";","function faireSimple() { return new ArchitectureComplexe(); }","catch (exception) { exception.ignorer(); }","SELECT * FROM tâches WHERE terminé = false ORDER BY urgence DESC;","await scrum.master.demander(\"On en est où ?\"); // Panique générale","const serveur = new Serveur({ RAM: \"insuffisante\", optimisme: \"maximum\" });","if (çaMarcheEnLocal) deployerEnProduction();","npm uninstall responsabilité --save","const refactoring = new Refactoring({ durée: \"10 minutes\", impact: \"6 mois\" });","await développeur.google(\"comment coder\");","while (client.aUneIdée()) budget.multiplier(0.5);","const backlog = Array(9999).fill(\"à faire\");","git commit -m \"finalement c'est bon\" // Spoiler : non","if (bug.estCritique) bug.priority = \"low\";","const réunion = await réunionService.create({ sujet: \"La réunion d'hier\" });","new Promise((resolve) => setTimeout(resolve, 2035));","const sécurité = new Sécurité({ firewall: \"croiser les doigts\" });","await productOwner.valider({ délai: Infinity });","if (code.estLegacy) code.estIntouchable = true;","const innovation = new Innovation(\"mettre un chatbot sur le chatbot\");","SELECT * FROM clients WHERE besoin = 'simple' AND budget = 0;","const salaire = new Money(0, \"motivation\");","await développeur.seDéconnecter(); // Connexion Slack toujours active","function tester() { return true; } // Pas le temps de tester","docker compose up --build --hope","const deadline = new Deadline({ date: \"avant la démo\", extensible: true });","if (manager.dit(\"c'est facile\")) estimation *= 12;","await api.call(\"https://api.nexiste-pas.com\");","const code = new Code({ qualité: \"ça dépend\", maintenabilité: null });","while (bugs.length > 0) bugs = bugs.map(bug => bug.rename(\"amélioration\"));","git commit -m \"refactor: déplacer le problème ailleurs\"","const stagiaire = await ressourcesHumaines.recruter({ salaire: \"tickets resto\" });","if (serveur.isDown()) serveur.isUp = true; // Résolu","const intelligence = await artificial.intelligence({ créativité: \"PowerPoint\" });","await client.demanderUnDevis({ budget: 0, délai: \"hier\", qualité: \"premium\" });","SELECT * FROM bugs WHERE développeur = 'pas moi';","const detteTechnique = new Dette({ taux: 0, remboursement: jamais });","if (vendredi && heure > 16) deployer({ risque: \"maximum\" });","await réunion.terminer(); // réunion suivante dans 2 minutes","const MVP = new Produit({ fonctionnalités: 87, viable: false, minimum: false });","function debugger() { console.log(\"Pourquoi ?\"); }","await serveur.ping(); // Il ne répond plus depuis 2019","const agile = new Agile({ planning: \"12 mois\", changements: \"toutes les heures\" });","if (client.estSatisfait()) ajouterTroisFonctionnalités();","npm install bonne-foi --force","const expérience = développeur.age * Math.random();","await production.deploy({ vendredi: true, superstition: false });","try { faireUnePetiteModification(); } catch { réécrireLeProjet(); }","const documentation = await IA.generate({ exactitude: 0.01 });","while (réunion.enCours) développeur.perdreEspoir();","const budget = new Budget({ prévu: 1000, réel: 100000 });","if (client.dit(\"juste un petit truc\")) alerterTouteLAgence();","SELECT * FROM développeurs WHERE sommeil > 0; -- 0 résultat","await backup.create({ destination: \"même disque\", sécurité: \"illusoire\" });","process.exit(0); // Enfin, les vacances."];
+let term = { lines: [], cur: '', src: SNIPPETS[0], pos: 0 };
+function typeCode(n){
+  for (let i = 0; i < n; i++){
+    if (term.pos >= term.src.length){ term.lines.push(term.cur); term.lines = term.lines.slice(-6); term.cur = ''; term.src = SNIPPETS[Math.floor(Math.random() * SNIPPETS.length)]; term.pos = 0; }
+    term.cur += term.src[term.pos++];
+  }
+  const el = $('#term'); if (el) el.innerHTML = term.lines.map(l => `<span class="old">${esc(l)}</span>`).join('\n') + (term.lines.length ? '\n' : '') + esc(term.cur) + '<span class="caret"></span>';
+}
+
+function renderAll(){ renderLevels(); renderConsole(); renderGame(); renderOctet(); }
+function renderGame(){
+  renderKevin();
+  if (!playing) renderStart(); else renderPlay();
+}
+
+async function renderStart(){
+  const root = $('#game-root');
+  let h = `<div class="start"><div class="stack">`;
+  if (pickPlayer){
+    h += `<div class="panel px"><h2>${esc(pickPlayer.pseudo)}</h2>`;
+    if (pickPlayer.parties.length) h += `<p>Reprendre une startup :</p><div class="players">${pickPlayer.parties.map(p => `<button data-resume="${p.id}"><span>${esc(p.nom_startup)}</span><small>${fmt(p.total_lignes)} lignes</small></button>`).join('')}</div><p></p>`;
+    h += `<form class="newgame" id="np2"><label class="f">Nouvelle startup <small>Facultatif.</small><input type="text" id="np2-nom" maxlength="80" autocomplete="off"></label>${startErr ? `<div class="err">${esc(startErr)}</div>` : ''}<div style="display:flex;gap:12px;flex-wrap:wrap"><button class="pbtn" type="submit">CRÉER</button><button class="pbtn ghost" type="button" data-back>RETOUR</button></div></form></div>`;
+  } else {
+    h += `<div class="panel px"><h2>NOUVELLE PARTIE</h2><form class="newgame" id="np">
+      <label class="f">Pseudo<input type="text" id="np-pseudo" maxlength="40" autocomplete="off"></label>
+      ${has(2) ? `<label class="f">Nom de votre startup <small>Facultatif.</small><input type="text" id="np-nom" maxlength="80" autocomplete="off"></label>` : ''}
+      ${startErr ? `<div class="err">${esc(startErr)}</div>` : ''}
+      ${crash && !has(0) ? `<div class="crash"><b>💥 ${esc(crash.sql)}</b><br>${esc(crash.msg)}</div>` : ''}
+      <div><button class="pbtn" type="submit">VALIDER</button></div></form></div>`;
+    if (has(1)){
+      const players = (await attempt0('select id, pseudo from joueur order by pseudo')) || [];
+      if (players.length) h += `<div class="panel px"><h2>CONTINUER EN TANT QUE… <small>${players.length} joueur(s)</small></h2><div class="players">${players.map(p => `<button data-player="${p.id}" data-pseudo="${esc(p.pseudo)}"><span>${esc(p.pseudo)}</span><small>n° ${p.id}</small></button>`).join('')}</div></div>`;
+    }
+  }
+  h += `</div><div class="panel px"><h2>HALL OF FAME</h2><div id="hall"></div></div></div>`;
+  root.innerHTML = h;
+  const np = $('#np'); if (np) np.addEventListener('submit', e => { e.preventDefault(); startGame($('#np-pseudo').value, $('#np-nom')?.value); });
+  const np2 = $('#np2'); if (np2) np2.addEventListener('submit', e => { e.preventDefault(); G = BLANK(); G.pseudo = pickPlayer.pseudo; G.joueurId = pickPlayer.id; createPartie($('#np2-nom').value); });
+  renderHall();
+}
+
+function renderPlay(){
+  const root = $('#game-root');
+  root.innerHTML = `<div class="game">
+    <div class="stack">
+      <div class="panel px hud">
+        <div class="startup">${esc(G.nomStartup || 'Startup sans nom')}</div>
+        <div class="player">par ${esc(G.pseudo)}${G.joueurId != null ? ` · joueur n° ${G.joueurId}` : ''}</div>
+        <div class="count num" id="c-lignes">0</div>
+        <div class="count-sub num"><span>lignes de code</span><span id="c-ps"></span><span id="c-pc"></span></div>
+        <div class="clickzone" id="zone"><button class="bigkey" id="key" aria-label="Écrire du code">CODER !<span>clique ici</span></button></div>
+        <pre class="term" id="term"></pre>
+        <div class="savebar"><span id="saveinfo">${has(2) ? esc(saveInfo || '💾 Sauvegarde automatique') : '⚠️ Partie non sauvegardée : la base ne stocke pas encore les parties'}</span><button class="linkbtn" id="quit">Changer de joueur</button></div>
+      </div>
+    </div>
+    <div class="stack">
+      <div class="panel px"><h2>BOUTIQUE <small id="shop-sub"></small></h2><div id="shop"></div></div>
+      <div class="panel px"><h2>AMÉLIORATIONS</h2><div id="amels"></div></div>
+      <div class="panel px"><h2>SUCCÈS <small id="succ-sub"></small></h2><div id="succes"></div></div>
+      <div class="panel px"><h2>HALL OF FAME</h2><div id="hall"></div></div>
+    </div></div>`;
+  $('#key').addEventListener('click', onClick);
+  $('#quit').addEventListener('click', quit);
+  typeCode(0);
+  renderShop(); renderAmels(); renderSucces(); renderHall(); tickUI();
+}
+
+function renderShop(){
+  const el = $('#shop'); if (!el) return;
+  if (!has(4)){
+    el.innerHTML = `<div class="shop"><button class="item" data-buy="0"><span class="ic">🧑‍🎓</span><span><span class="nm">Stagiaire</span><span class="ds">Le catalogue n'est pas chargé.</span></span><span class="pr">ACHETER</span></button></div>`;
+    return;
+  }
+  el.innerHTML = `<div class="shop">${CAT.bats.map(b => `<button class="item" data-buy="${b.id}">
+    <span class="ic">${ICON[b.key] || '🏢'}</span>
+    <span style="min-width:0"><span class="nm">${esc(b.nom)}</span><span class="ds">${esc(b.description || '')} · +${fmt(b.production, 1)}/s</span></span>
+    <span style="display:flex;gap:12px;align-items:center"><span class="pr num">${fmt(price(b))}</span><span class="qty num">${G.owned[b.key] || 0}</span></span></button>`).join('')}</div>`;
+}
+function renderAmels(){
+  const el = $('#amels'); if (!el) return;
+  if (!has(6)){ el.innerHTML = `<div class="trybox"><p>Aucun bonus pour l'instant.</p><button class="pbtn ghost" data-try="amel">VOIR LES AMÉLIORATIONS</button></div>`; return; }
+  const vis = CAT.amels.filter(a => G.upgrades.includes(a.key) || !a.batKey || (G.owned[a.batKey] || 0) > 0);
+  el.innerHTML = vis.length ? `<div class="chips">${vis.map(a => G.upgrades.includes(a.key)
+    ? `<span class="chip owned"><b>✓ ${esc(a.nom)}</b>${a.bat_nom ? esc(a.bat_nom) : 'Clic'} ×${a.multiplicateur}</span>`
+    : `<button class="chip" data-amel="${a.id}"><b>${esc(a.nom)}</b>${a.bat_nom ? esc(a.bat_nom) : 'Clic'} ×${a.multiplicateur} · <span class="num">${fmt(a.cout)}</span></button>`).join('')}</div>` : `<p>Achète ton premier bâtiment pour voir apparaître des améliorations.</p>`;
+  el.dataset.n = vis.length;
+}
+function renderSucces(){
+  const el = $('#succes'); if (!el) return;
+  if (!has(7)){ el.innerHTML = `<div class="trybox"><p>Aucun badge pour l'instant.</p><button class="pbtn ghost" data-try="succes">VOIR MES SUCCÈS</button></div>`; return; }
+  $('#succ-sub').textContent = `${G.succes.length} / ${CAT.succes.length}`;
+  el.innerHTML = `<div class="badges">${CAT.succes.map(s => `<div class="badge ${G.succes.includes(s.code) ? 'got' : ''}"><b>${esc(s.nom)}</b>${esc(s.description)}</div>`).join('')}</div>`;
+}
+let lastRank = null;
+function trackRank(i){
+  if (i < 0){ lastRank = null; return; }
+  const rank = i + 1;
+  if (lastRank && rank < lastRank) toast(`${rank === 1 ? '1RE' : rank + 'E'} PLACE !`, rank === 1 ? 'Ta startup est en tête du hall of fame !' : `Tu doubles une startup au hall of fame.`);
+  lastRank = rank;
+}
+async function renderHall(){
+  const el = $('#hall'); if (!el) return;
+  const me = r => playing && r.pseudo === G.pseudo && (r.nom_startup == null || r.nom_startup === G.nomStartup);
+  const table = (head, rows) => `<div class="scroll-x"><table class="grid"><thead><tr>${head}</tr></thead><tbody>${rows}</tbody></table></div>`;
+  if (!has(0)){
+    const dbOk = await one(`select 1 from pg_database where datname = 'startup_clicker'`);
+    const m = dbOk ? await tryQuery('select pseudo from joueur') : 'FATAL: database "startup_clicker" does not exist';
+    el.innerHTML = `<p>Personne pour l'instant… et pour cause :</p><div class="crash">${esc(m || 'la table joueur n\'est pas encore conforme')}</div>`; return;
+  }
+  if (!has(2)){
+    const rows = (await attempt0('select * from joueur')) || [];
+    const hasId = rows.length && 'id' in rows[0];
+    el.innerHTML = rows.length ? table(`${hasId ? '<th>N°</th>' : ''}<th>Joueur</th><th class="r">Score</th>`, rows.map(r => `<tr class="${me(r) ? 'me' : ''}">${hasId ? `<td>${esc(r.id)}</td>` : ''}${r.pseudo === null ? '<td class="null">NULL</td>' : r.pseudo === '' ? '<td class="null">(vide)</td>' : `<td>${esc(r.pseudo)}</td>`}<td class="r null">?</td></tr>`).join(''))
+      + `<p style="color:var(--muted);margin:10px 0 0">Pas de score : la base ne connaît pas encore les parties.</p>` : `<p>Aucun joueur inscrit.</p>`;
+    return;
+  }
+  if (!has(5)){
+    const rows = (await attempt0('select j.pseudo, p.nom_startup, p.total_lignes from partie p join joueur j on j.id = p.joueur_id order by p.total_lignes desc limit 10')) || [];
+    el.innerHTML = table(`<th>#</th><th>Startup</th><th>Joueur</th><th class="r">Lignes</th>`, rows.map((r, i) => `<tr class="${me(r) ? 'me' : ''}"><td>${i + 1}</td><td>${esc(r.nom_startup)}</td><td>${esc(r.pseudo)}</td><td class="r num${me(r) ? ' me-l' : ''}">${fmt(r.total_lignes)}</td></tr>`).join(''));
+    trackRank(rows.findIndex(me));
+    return;
+  }
+  const rows = (await attempt0('select j.pseudo, p.nom_startup, p.total_lignes, coalesce(sum(po.quantite), 0) as nb_batiments from partie p join joueur j on j.id = p.joueur_id left join possession po on po.partie_id = p.id group by p.id, j.pseudo, p.nom_startup, p.total_lignes order by p.total_lignes desc limit 10')) || [];
+  el.innerHTML = table(`<th>#</th><th>Startup</th><th>Joueur</th><th class="r">Lignes</th><th class="r">Bât.</th>`, rows.map((r, i) => `<tr class="${me(r) ? 'me' : ''}"><td>${i + 1}</td><td>${esc(r.nom_startup)}</td><td>${esc(r.pseudo)}</td><td class="r num${me(r) ? ' me-l' : ''}">${fmt(r.total_lignes)}</td><td class="r num">${fmt(r.nb_batiments)}</td></tr>`).join(''));
+  trackRank(rows.findIndex(me));
+}
+
+function tickUI(){
+  const ml = $('#hall .me-l'); if (ml && has(2)) ml.textContent = fmt(Math.floor(G.total));
+  const c = $('#c-lignes'); if (!c) return;
+  c.textContent = fmt(Math.floor(G.lignes));
+  $('#c-ps').textContent = has(5) ? `${fmt(perSec(), 1)} / s` : '';
+  $('#c-pc').textContent = `${fmt(perClick())} par clic`;
+  if (has(4)) document.querySelectorAll('[data-buy]').forEach(btn => { const b = CAT.bats.find(x => x.id == btn.dataset.buy); if (b){ btn.disabled = G.lignes < price(b); const p = btn.querySelector('.pr'); if (p) p.textContent = fmt(price(b)); } });
+  document.querySelectorAll('[data-amel]').forEach(btn => { const a = CAT.amels.find(x => x.id == btn.dataset.amel); if (a) btn.disabled = G.lignes < a.cout; });
+}
+function onClick(e){
+  const v = perClick(); G.lignes += v; G.total += v; G.clics++;
+  typeCode(3); tickUI();
+  const z = $('#zone'); const zr = z.getBoundingClientRect();
+  const x = (e.clientX ? e.clientX - zr.left : zr.width / 2) + (Math.random() * 40 - 20), y = (e.clientY ? e.clientY - zr.top : zr.height / 2) - 20;
+  const f = document.createElement('span'); f.className = 'floater'; f.textContent = '+' + fmt(v); f.style.left = x + 'px'; f.style.top = y + 'px'; z.appendChild(f); setTimeout(() => f.remove(), 900);
+}
+function spawnBug(){
+  const z = $('#zone'); if (!z || !playing || document.hidden) return;
+  const b = document.createElement('button'); b.className = 'bug'; b.textContent = '🐛'; b.setAttribute('aria-label', 'Attraper Gérard le bug');
+  b.style.left = (10 + Math.random() * 75) + '%'; b.style.top = (Math.random() * 60) + '%';
+  b.addEventListener('click', () => { const gain = Math.max(25, Math.floor(perSec() * 45), perClick() * 15); G.lignes += gain; G.total += gain; toast('GÉRARD ATTRAPÉ !', `+${fmt(gain)} lignes`); b.remove(); tickUI(); });
+  z.appendChild(b); setTimeout(() => b.remove(), 7000);
+}
+function toast(title, text){
+  const t = document.createElement('div'); t.className = 'toast'; t.innerHTML = `<b>${esc(title)}</b>${esc(text || '')}`;
+  $('#toasts').appendChild(t); setTimeout(() => t.remove(), 4500);
+}
+
+/* ---------------- boucles ---------------- */
+let lastT = performance.now();
+setInterval(() => {
+  const now = performance.now(); const dt = (now - lastT) / 1000; lastT = now;
+  if (!playing) return;
+  const g = perSec() * dt; if (g > 0){ G.lignes += g; G.total += g; if (Math.random() < dt * Math.min(6, perSec())) typeCode(1); }
+  tickUI();
+}, 100);
+setInterval(async () => {
+  await save();
+  if (has(2) && booted){ for (const r of RIVALS) if (r.rate) await attempt0('update partie p set total_lignes = p.total_lignes + $1, lignes_code = p.lignes_code + $1 from joueur j where j.id = p.joueur_id and j.pseudo = $2 and p.nom_startup = $3', [r.rate * 3, r.pseudo, r.startup]); }
+  if (has(2)) renderHall();
+}, 3000);
+setInterval(() => {
+  checkSucces();
+  if (playing && has(6)){ const el = $('#amels'); const vis = CAT.amels.filter(a => G.upgrades.includes(a.key) || !a.batKey || (G.owned[a.batKey] || 0) > 0).length; if (el && Number(el.dataset.n) !== vis) renderAmels(); }
+}, 1000);
+(function bugLoop(){ setTimeout(() => { spawnBug(); bugLoop(); }, 25000 + Math.random() * 35000); })();
+
+/* ---------------- événements ---------------- */
+document.addEventListener('click', e => {
+  const t = e.target.closest('button'); if (!t) return;
+  if (t.dataset.tab) return showTab(t.dataset.tab);
+  if (t.dataset.go) return showTab(t.dataset.go);
+  if (t.dataset.buy !== undefined) return buy(Number(t.dataset.buy));
+  if (t.dataset.amel) return buyUpgrade(Number(t.dataset.amel));
+  if (t.dataset.try) return tryLocked(t.dataset.try);
+  if (t.dataset.player) return choosePlayer(Number(t.dataset.player), t.dataset.pseudo);
+  if (t.dataset.resume) return resumePartie(Number(t.dataset.resume));
+  if (t.hasAttribute('data-back')){ pickPlayer = null; startErr = ''; renderGame(); }
+});
+function showTab(name){
+  for (const b of document.querySelectorAll('nav.tabs button')) b.setAttribute('aria-selected', String(b.dataset.tab === name));
+  for (const s of document.querySelectorAll('section.tab')) s.hidden = s.id !== 'tab-' + name;
+  store.set('sc_tab', name);
+  if (name === 'game' && playing) tickUI();
+  window.scrollTo({ top: 0 });
+}
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && !$('#tab-sql').hidden){ e.preventDefault(); runScript(); }
+});
+const ta = $('#sql'), gut = $('#gutter');
+function gutter(){ const n = ta.value.split('\n').length; let s = ''; for (let i = 1; i <= n; i++) s += i + '\n'; gut.textContent = s; gut.scrollTop = ta.scrollTop; }
+ta.addEventListener('input', () => { gutter(); store.set('sc_script', ta.value); });
+ta.addEventListener('scroll', () => { gut.scrollTop = ta.scrollTop; });
+ta.addEventListener('keydown', e => { if (e.key === 'Tab' && !e.shiftKey){ e.preventDefault(); ta.setRangeText('  ', ta.selectionStart, ta.selectionEnd, 'end'); gutter(); } });
+$('#run').addEventListener('click', runScript);
+function setMode(m){ MODE = m; store.set('sc_mode', m); document.querySelectorAll('[data-mode]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.mode === m))); if (lastReport) renderConsole(); if (booted) renderOctet(); }
+document.querySelectorAll('[data-mode]').forEach(b => b.addEventListener('click', () => setMode(b.dataset.mode)));
+setMode(MODE);
+$('#copy').addEventListener('click', async () => {
+  try { await navigator.clipboard.writeText(ta.value); toast('SCRIPT COPIÉ', 'Tu peux le coller dans ton rendu.'); }
+  catch { ta.focus(); ta.select(); toast('SCRIPT SÉLECTIONNÉ', 'Fais Ctrl + C (ou Cmd + C) pour le copier.'); }
+});
+document.addEventListener('visibilitychange', () => { if (document.hidden) save(); });
+
+/* ---------------- démarrage ---------------- */
+async function boot(){
+  await loadScore();
+  showTab(store.get('sc_tab', 'game'));
+  ta.value = store.get('sc_script', DEFAULT_SCRIPT); gutter();
+  renderLevels(); renderKevin();
+  let mod, opts = {};
+  try {
+    mod = await import(PGLITE_LOCAL);
+    // le paquet de fichiers de PostgreSQL est publié sous un nom en .wasm (seuls certains types sont servis)
+    try { const r = await fetch('./pglite/postgres-data.wasm'); if (r.ok) opts.fsBundle = await r.blob(); } catch {}
+  }
+  catch { try { mod = await import(PGLITE_CDN); } catch(e){ $('#boot-msg').textContent = 'Impossible de charger PostgreSQL : ' + e.message; return; } }
+  db = new mod.PGlite(opts); await db.waitReady;
+  const saved = store.get('sc_game', null);
+  await runScript();
+  if (saved && saved.pseudo && has(2)){ G = Object.assign(BLANK(), saved); playing = true; await resync(); if (!G.partieId){ playing = false; G = BLANK(); } }
+  booted = true;
+  renderGame();
+  window.__sc = { get level(){ return LEVEL; }, get G(){ return G; }, q };
+}
+
+/* ---------------- Octet : le petit robot qui donne la syntaxe ----------------
+   On clique dessus, on répond à une question de cours, et il donne la syntaxe utile
+   pour l'étape en cours. Une mauvaise réponse le fait bouder 30 secondes. */
+const isMy = () => MODE === 'mysql';
+const AI = () => isMy() ? 'INT AUTO_INCREMENT PRIMARY KEY' : 'SERIAL PRIMARY KEY';
+const DT = () => isMy() ? 'DATETIME' : 'TIMESTAMP';
+const OCTET = [
+  { q:"À quoi sert l'instruction CREATE TABLE ?", ok:"Créer une table, avec ses colonnes et leurs types",
+    no:["Ajouter une ligne dans une table","Créer une nouvelle base de données","Afficher le contenu d'une table"],
+    tips:() => [
+      ['Créer la base', `CREATE DATABASE nom_de_la_base;`],
+      ['Créer une table', `CREATE TABLE nom_table (\n  colonne1 VARCHAR(50),\n  colonne2 INT\n);`],
+      ['Types courants', `VARCHAR(n)  texte de n caractères maximum\nTEXT        texte long\nINT         nombre entier\n${DT().padEnd(11)} date et heure`],
+    ]},
+  { q:"Qu'est-ce qu'une clé primaire ?", ok:"Une colonne (ou un groupe de colonnes) qui identifie chaque ligne de façon unique",
+    no:["La première colonne d'une table, quelle qu'elle soit","Une colonne qui fait référence à une autre table","Une colonne qui ne peut contenir que des nombres"],
+    tips:() => [
+      ['Numéro attribué automatiquement', `id ${AI()}`],
+      ['Valeur obligatoire', `pseudo VARCHAR(20) NOT NULL`],
+      ['Valeur unique', `pseudo VARCHAR(20) NOT NULL UNIQUE`],
+      ['Valeur par défaut', `colonne TYPE DEFAULT valeur\n\n-- la date et l'heure du moment :\ncree_le ${DT()} NOT NULL DEFAULT CURRENT_TIMESTAMP`],
+    ]},
+  { q:"À quoi sert une clé étrangère ?", ok:"À garantir qu'une valeur existe bien dans une autre table",
+    no:["À rendre une colonne unique","À trier les lignes d'une table","À chiffrer une colonne"],
+    tips:() => [
+      ['Clé étrangère', `CREATE TABLE commande (\n  id ${AI()},\n  client_id INT NOT NULL,\n  FOREIGN KEY (client_id) REFERENCES client(id)\n);`],
+      ['Règle de vérification', `prix INT NOT NULL CHECK (prix > 0)      -- strictement positif\nstock INT NOT NULL CHECK (stock >= 0)   -- jamais négatif\nnote INT CHECK (note BETWEEN 0 AND 20)`],
+      ['Texte par défaut', `statut VARCHAR(20) NOT NULL DEFAULT 'En attente'`],
+      ['Très grands nombres', `INT     jusqu'à environ 2 milliards\nBIGINT  jusqu'à environ 9 milliards de milliards`],
+    ]},
+  { q:"Un joueur a des parties. Que fait la base, par défaut, si on essaie de supprimer ce joueur ?", ok:"Elle refuse la suppression, pour ne pas laisser de parties orphelines",
+    no:["Elle supprime le joueur et garde ses parties","Elle supprime toute la table partie","Elle vide la colonne joueur_id des parties"],
+    tips:() => [
+      ['Supprimer en cascade', `FOREIGN KEY (client_id) REFERENCES client(id) ON DELETE CASCADE\n\n-- quand un client est supprimé,\n-- ses lignes liées sont supprimées avec lui`],
+    ]},
+  { q:"Quel type choisir pour un nombre avec une décimale, comme 0,1 ?", ok:"DECIMAL(10,1)",
+    no:["INT","VARCHAR(10)","BOOLEAN"],
+    tips:() => [
+      ['Règle de vérification', `prix INT NOT NULL CHECK (prix > 0)      -- strictement positif\nstock INT NOT NULL CHECK (stock >= 0)   -- jamais négatif\nnote INT CHECK (note BETWEEN 0 AND 20)`],
+      ['Nombre décimal', `prix DECIMAL(10,2)   -- 10 chiffres dont 2 après la virgule\n-- en SQL, la virgule s'écrit avec un point : 0.1`],
+      ['Insérer plusieurs lignes', `INSERT INTO produit (nom, prix) VALUES\n  ('Clavier', 49.90),\n  ('Souris', 19.50);`],
+      ['Apostrophe dans un texte', isMy() ? `'l\\'ordinateur'   ou   'l''ordinateur'` : `'l''ordinateur'   -- on double l'apostrophe`],
+    ]},
+  { q:"Une partie possède plusieurs bâtiments, et un bâtiment peut être possédé par plusieurs parties. C'est une relation…", ok:"Plusieurs-à-plusieurs (n-n)",
+    no:["Un-à-un (1-1)","Un-à-plusieurs (1-n)","Il n'y a pas de relation"],
+    tips:() => [
+      ['Table d\'association', `CREATE TABLE inscription (\n  eleve_id INT NOT NULL,\n  cours_id INT NOT NULL,\n  note INT,\n  PRIMARY KEY (eleve_id, cours_id),\n  FOREIGN KEY (eleve_id) REFERENCES eleve(id),\n  FOREIGN KEY (cours_id) REFERENCES cours(id)\n);`],
+      ['Règle de vérification', `prix INT NOT NULL CHECK (prix > 0)      -- strictement positif\nstock INT NOT NULL CHECK (stock >= 0)   -- jamais négatif\nnote INT CHECK (note BETWEEN 0 AND 20)`],
+      ['Pourquoi une clé sur deux colonnes ?', `PRIMARY KEY (eleve_id, cours_id)\n-- un même couple (élève, cours) ne peut exister qu'une fois`],
+    ]},
+  { q:"Comment indiquer qu'une ligne n'est liée à aucune autre ligne ?", ok:"En laissant la clé étrangère à NULL",
+    no:["En mettant 0 dans la clé étrangère","En supprimant la clé étrangère","En mettant le texte 'aucun'"],
+    tips:() => [
+      ['Règle de vérification', `prix INT NOT NULL CHECK (prix > 0)      -- strictement positif\nstock INT NOT NULL CHECK (stock >= 0)   -- jamais négatif\nnote INT CHECK (note BETWEEN 0 AND 20)`],
+      ['Clé étrangère facultative', `categorie_id INT NULL,\nFOREIGN KEY (categorie_id) REFERENCES categorie(id)\n-- NULL = aucune catégorie`],
+      ['Retrouver un id dans un INSERT', `INSERT INTO produit (nom, categorie_id) VALUES\n  ('Clavier', (SELECT id FROM categorie WHERE nom = 'Informatique'));`],
+    ]},
+  { q:"Une clé primaire peut-elle être un texte ?", ok:"Oui, si la valeur est unique et toujours renseignée",
+    no:["Non, une clé primaire est toujours un nombre","Oui, mais seulement si elle fait 1 caractère","Non, un texte ne peut pas être unique"],
+    tips:() => [
+      ['Clé primaire en texte', `CREATE TABLE pays (\n  code VARCHAR(2) PRIMARY KEY,   -- 'FR', 'BE'…\n  nom  VARCHAR(50) NOT NULL\n);`],
+      ['Clé étrangère vers un texte', `pays_code VARCHAR(2) NOT NULL,\nFOREIGN KEY (pays_code) REFERENCES pays(code)`],
+    ]},
+];
+const OCTET_SPRITE = ['.......yy.......','.......kk.......','....kkkkkkkk....','...kggggggggk...','...kgccggccgk...','...kgccggccgk...','...kggggggggk...','...kggkkkkggk...','...kggggggggk...','....kkkkkkkk....','..kkppppppppkk..','.kgkppyyyyppkgk.','.kgkppyyyyppkgk.','..kkppppppppkk..','....kk....kk....','....kk....kk....'];
+const OPAL = { k:'#0A0B1E', g:'#C9CCE8', c:'#3EDBF0', y:'#FFD23F', p:'#FF4D8D' };
+let octetOpen = false, octetShuffle = {};
+
+function drawOctet(cv){
+  const c = cv.getContext('2d'); cv.width = 16; cv.height = 16;
+  OCTET_SPRITE.forEach((row, y) => [...row].forEach((ch, x) => { if (OPAL[ch]){ c.fillStyle = OPAL[ch]; c.fillRect(x, y, 1, 1); } }));
+}
+function renderOctet(){
+  const el = $('#octet'); if (!el) return;
+  const k = Math.min(LEVEL, OCTET.length - 1);
+  const solved = SCORE.tips.includes(k);
+  let panel = '';
+  if (octetOpen){
+    const O = OCTET[k];
+    let body;
+    if (solved){
+      body = `<p class="o-say">Bien joué ! Voici la syntaxe qui va t'aider pour l'étape ${k + 1}${isMy() ? ' (MySQL)' : ' (PostgreSQL)'}. Les exemples ne parlent pas de ton jeu : à toi de les adapter.</p>` +
+        O.tips().map(([t, code]) => `<div class="o-tip"><b>${esc(t)}</b><pre>${esc(code)}</pre></div>`).join('');
+    } else {
+      if (!octetShuffle[k]) octetShuffle[k] = [O.ok, ...O.no].sort(() => Math.random() - .5);
+      const wait = Math.ceil(((SCORE?.sulk || 0) - Date.now()) / 1000);
+      body = `<p class="o-say">Bip bip ! Je m'appelle Octet. Réponds à ma question et je te donne la syntaxe pour l'étape ${k + 1}.</p><p class="o-warn">⚠ Utiliser Octet coûte des points : −${PTS.tip} si tu débloques l'astuce, −${PTS.wrong} par mauvaise réponse.</p><p class="o-q">${esc(O.q)}</p>` +
+        (wait > 0 ? `<p class="o-sulk">Raté ! Je boude. Reviens dans <span id="o-wait">${wait}</span> s.</p>`
+                  : `<div class="o-opts">${octetShuffle[k].map((a, i) => `<button type="button" data-oans="${i}">${esc(a)}</button>`).join('')}</div>`);
+    }
+    panel = `<div class="o-panel px" role="dialog" aria-label="Octet, l'assistant"><button type="button" class="o-close" data-oclose aria-label="Fermer">✕</button>${body}</div>`;
+  }
+  el.innerHTML = `${panel}<button type="button" class="o-bot" data-otoggle aria-label="Demander de l'aide à Octet"><canvas width="16" height="16"></canvas>${octetOpen ? '' : `<span class="o-q-badge">?</span>`}</button>`;
+  drawOctet(el.querySelector('canvas'));
+}
+document.addEventListener('click', async e => {
+  const t = e.target.closest('#octet button'); if (!t) return;
+  if (t.hasAttribute('data-otoggle')){ octetOpen = !octetOpen; renderOctet(); return; }
+  if (t.hasAttribute('data-oclose')){ octetOpen = false; renderOctet(); return; }
+  if (t.dataset.oans !== undefined){
+    const k = Math.min(LEVEL, OCTET.length - 1);
+    if (octetShuffle[k][Number(t.dataset.oans)] === OCTET[k].ok){ if (!SCORE.tips.includes(k)) SCORE.tips.push(k); toast(`−${PTS.tip} POINTS`, "Astuce débloquée."); }
+    else { SCORE.wrong++; SCORE.sulk = Date.now() + 30000; octetShuffle[k] = null; toast(`−${PTS.wrong} POINTS`, 'Mauvaise réponse.'); }
+    await saveScore(); renderScore(); renderOctet();
+  }
+});
+setInterval(() => {
+  const w = $('#o-wait'); if (!w) return;
+  const s = Math.ceil(((SCORE?.sulk || 0) - Date.now()) / 1000);
+  if (s <= 0) renderOctet(); else w.textContent = s;
+}, 1000);
+
+/* ---------------- points (stockés chiffrés en AES-GCM) ----------------
+   +100 par étape validée, −40 par astuce d'Octet débloquée, −10 par mauvaise réponse à Octet.
+   Toute modification à la main du stockage est détectée (le déchiffrement échoue). */
+const PTS = { step:100, tip:40, wrong:10 };
+const SC_SECRET = 'pX7#startup-clicker!2026/nodevo~Kq9';
+const SC_KEY_NAME = 'sc_p';
+let SCORE = null;
+const b64u = buf => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+const unb64u = s => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((s.length + 3) % 4)), c => c.charCodeAt(0));
+let _scKey = null;
+async function scKey(){
+  if (!_scKey){ const raw = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(SC_SECRET)); _scKey = await crypto.subtle.importKey('raw', raw, 'AES-GCM', false, ['encrypt', 'decrypt']); }
+  return _scKey;
+}
+async function seal(obj){
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ct = await crypto.subtle.encrypt({ name:'AES-GCM', iv }, await scKey(), new TextEncoder().encode(JSON.stringify(obj)));
+  const out = new Uint8Array(12 + ct.byteLength); out.set(iv); out.set(new Uint8Array(ct), 12); return b64u(out);
+}
+async function unseal(str){
+  const bytes = unb64u(str);
+  const pt = await crypto.subtle.decrypt({ name:'AES-GCM', iv: bytes.slice(0, 12) }, await scKey(), bytes.slice(12));
+  return JSON.parse(new TextDecoder().decode(pt));
+}
+const freshScore = (tampered = false) => ({ v:1, start: Date.now(), name:'', max:0, tips:[], wrong:0, sulk:0, tampered, steps:{} });
+async function loadScore(){
+  let raw = null; try { raw = localStorage.getItem(SC_KEY_NAME); } catch {}
+  if (!raw){ SCORE = freshScore(); await saveScore(); return; }
+  try { SCORE = Object.assign(freshScore(), await unseal(raw)); }
+  catch { SCORE = freshScore(true); await saveScore(); }
+}
+async function saveScore(){ try { localStorage.setItem(SC_KEY_NAME, await seal(SCORE)); } catch {} }
+const points = () => Math.max(0, SCORE.max * PTS.step - SCORE.tips.length * PTS.tip - SCORE.wrong * PTS.wrong);
+async function scoreOnLevel(level){
+  if (!SCORE || level <= SCORE.max) return;
+  for (let k = SCORE.max; k < level; k++) SCORE.steps[k] = Date.now();
+  SCORE.max = level; await saveScore(); renderScore();
+}
+async function verifCode(){
+  return 'SC1-' + await seal({ name: SCORE.name, pts: points(), max: SCORE.max, tips: SCORE.tips.length, wrong: SCORE.wrong, start: SCORE.start, at: Date.now(), tampered: SCORE.tampered });
+}
+function renderScore(){
+  const h = $('#score-top'); if (h && SCORE) h.textContent = `${points()} PTS`;
+  const box = $('#score-box'); if (!box || !SCORE) return;
+  box.innerHTML = `<details class="box" open><summary>Mon score : ${points()} points</summary><div>
+    <p class="note">+${PTS.step} par étape validée · −${PTS.tip} par astuce d'Octet · −${PTS.wrong} par mauvaise réponse à Octet</p>
+    <p class="note">${SCORE.max} étape(s) validée(s) · ${SCORE.tips.length} astuce(s) utilisée(s) · ${SCORE.wrong} mauvaise(s) réponse(s)${SCORE.tampered ? ' · <b style="color:var(--red)">⚠ données de score modifiées : signalé à l\'enseignant</b>' : ''}</p>
+    <label class="f" style="margin:10px 0">Ton nom et prénom<input type="text" id="sc-name" value="${esc(SCORE.name)}" maxlength="60" autocomplete="off" style="font:15px var(--f-body)"></label>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center"><button class="pbtn alt" type="button" id="sc-code">CODE POUR L'ENSEIGNANT</button><span class="note">À copier à la fin de la séance.</span></div>
+    <pre id="sc-code-out" style="white-space:pre-wrap;overflow-wrap:anywhere;font-size:11px;margin:10px 0 0" hidden></pre>
+  </div></details>`;
+}
+document.addEventListener('change', async e => { if (e.target.id === 'sc-name'){ SCORE.name = e.target.value.trim(); await saveScore(); } });
+document.addEventListener('click', async e => {
+  if (!e.target.closest('#sc-code')) return;
+  const n = $('#sc-name'); if (n){ SCORE.name = n.value.trim(); await saveScore(); }
+  if (!SCORE.name){ toast('NOM MANQUANT', 'Indique ton nom avant de générer le code.'); n?.focus(); return; }
+  const code = await verifCode(); const out = $('#sc-code-out'); out.hidden = false; out.textContent = code;
+  try { await navigator.clipboard.writeText(code); toast('CODE COPIÉ', 'Colle-le dans ton rendu.'); } catch { toast('CODE GÉNÉRÉ', 'Sélectionne-le et copie-le (Ctrl + C).'); }
+});
+
+/* ---------------- espace enseignant : adresse de la page suivie de #prof ---------------- */
+async function renderProf(){
+  if (location.hash !== '#prof') return false;
+  document.querySelectorAll('section.tab').forEach(s => s.hidden = true);
+  let sec = $('#tab-prof');
+  if (!sec){ sec = document.createElement('section'); sec.id = 'tab-prof'; sec.className = 'tab'; $('main').appendChild(sec); }
+  sec.hidden = false;
+  sec.innerHTML = `<div class="panel px" style="max-width:980px;margin:0 auto"><h2>ESPACE ENSEIGNANT</h2>
+    <p style="color:var(--muted)">Collez les codes des étudiants, un par ligne, puis cliquez sur « Vérifier ».</p>
+    <textarea id="prof-in" style="width:100%;min-height:160px;background:var(--code-bg);color:var(--code-ink);border:0;padding:10px;font:12px var(--f-mono)"></textarea>
+    <div style="margin:12px 0"><button class="pbtn" id="prof-go" type="button">VÉRIFIER</button></div><div id="prof-out" class="scroll-x"></div></div>`;
+  $('#prof-go').addEventListener('click', async () => {
+    const rows = [];
+    for (const line of $('#prof-in').value.split(/\s+/).filter(Boolean)){
+      try { const d = await unseal(line.replace(/^SC1-/, '')); rows.push({ ok:true, ...d }); }
+      catch { rows.push({ ok:false, raw: line.slice(0, 24) + '…' }); }
+    }
+    const dt = t => new Date(t).toLocaleString('fr-FR', { dateStyle:'short', timeStyle:'short' });
+    $('#prof-out').innerHTML = `<table class="grid"><thead><tr><th>Nom</th><th class="r">Points</th><th class="r">Étapes</th><th class="r">Astuces</th><th class="r">Erreurs</th><th>Début</th><th>Code généré</th><th>État</th></tr></thead><tbody>${rows.map(r => r.ok
+      ? `<tr><td>${esc(r.name)}</td><td class="r num">${r.pts}</td><td class="r">${r.max}/${LEVELS.length}</td><td class="r">${r.tips}</td><td class="r">${r.wrong}</td><td>${dt(r.start)}</td><td>${dt(r.at)}</td><td>${r.tampered ? '⚠ score modifié' : 'OK'}</td></tr>`
+      : `<tr><td colspan="7" class="null">${esc(r.raw)}</td><td>✗ code invalide</td></tr>`).join('')}</tbody></table>
+      <p style="color:var(--muted)">« Début » est l'heure à laquelle l'étudiant a ouvert le jeu pour la première fois sur ce navigateur. Un début bien après le début de la séance peut signaler un effacement des données pour repartir à zéro.</p>`;
+  });
+  return true;
+}
+window.addEventListener('hashchange', async () => { if (!(await renderProf())) showTab(store.get('sc_tab', 'game')); });
+
+boot().then(() => renderProf());
+</script>
+
+</body></html>

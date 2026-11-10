@@ -117,6 +117,9 @@ section.tab[hidden]{display:none}
 .badges{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px}
 .badge{padding:8px 10px;background:var(--bg2);color:var(--dim)}
 .badge b{display:block;color:var(--muted);font-weight:400}
+.badge.fail{background:#5A1E2C;color:#FFC9CF}
+.badge.fail b{color:#fff}
+.badge .why{display:block;margin-top:6px;font:13px/1.35 var(--f-mono);color:#FFC9CF}
 .badge.got{background:#1F5E3A;color:#BDF5CC}
 .badge.got b{color:var(--yellow)}
 .badge.got b::before{content:"★ "}
@@ -680,6 +683,10 @@ const LEVELS = [
         return errs.length ? errs.slice(0, 4).join(' · ') : true; }),
       chk('La table succes_obtenu existe avec les colonnes attendues', async () => await tableExists('succes_obtenu') ? colsCheck('succes_obtenu', { partie_id:T_INT, succes_code:T_TXT, date_obtention:T_TIME }) : 'Table succes_obtenu introuvable.', true),
       chk('Ses clés étrangères pointent vers les bonnes tables', async () => all(await fkIs('succes_obtenu', 'partie_id', 'partie', 'id'), await fkIs('succes_obtenu', 'succes_code', 'succes', 'code'))),
+      chk('Chaque succès du catalogue peut être obtenu par une partie', () => tx(async () => { const j = await tJoueur(); const p = await tPartie(j);
+        for (const { code } of await q('select code from succes')){ const r = await attempt('insert into succes_obtenu(partie_id, succes_code) values($1, $2)', [p, code]);
+          if (!r.ok) return `La base refuse d'enregistrer le succès ${code} pour une partie : ${r.msg}${/too long/.test(r.msg) ? ' → La colonne succes_code est trop courte pour contenir ce code. Comparez-la avec la colonne code de la table succes.' : ''}`; }
+        return true; })),
       chk('Une partie obtient chaque succès une seule fois', async () => all(
         await uniqueOn('succes_obtenu', ['partie_id','succes_code'], "Rien n'empêche une partie d'obtenir deux fois le même succès."),
         await tx(async () => { const s = await tSucces(); return refused(await attempt('insert into succes_obtenu(partie_id, succes_code) values(null, $1)', [s]), 'un succès obtenu sans partie'); }))),
@@ -742,6 +749,8 @@ function errorLine(st, e, executed){
 
 /* ---------------- traduction MySQL → PostgreSQL ----------------
    Les étudiants écrivent du MySQL ; on le convertit juste avant l'exécution. */
+/* colonnes déclarées UNSIGNED (table.colonne) : PostgreSQL n'a pas cette notion, MySQL en tient compte pour les clés étrangères */
+const MYSQL_UNSIGNED = new Set();
 function mysqlToPg(sql){
   const lits = []; let s = ''; const n = sql.length;
   for (let i = 0; i < n; ){
@@ -762,6 +771,8 @@ function mysqlToPg(sql){
     s += c; i++;
   }
   const INTS = 'BIGINT|INTEGER|INT|SMALLINT|MEDIUMINT|TINYINT';
+  const tbl = (s.trim().match(/^(?:CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?|ALTER\s+TABLE\s+)(\w+)/i) || [])[1];
+  const markU = col => { if (tbl) MYSQL_UNSIGNED.add((tbl + '.' + col).toLowerCase()); };
   const t = s.trim();
   // commandes de consultation propres à MySQL
   if (/^SHOW\s+TABLES\s*;?$/i.test(t)) return `SELECT table_name AS "Tables" FROM information_schema.tables WHERE table_schema = 'public' ORDER BY 1;`;
@@ -776,9 +787,9 @@ function mysqlToPg(sql){
     .replace(/\bROW_FORMAT\s*=?\s*\w+/gi, '')
     .replace(/\bAUTO_INCREMENT\s*=\s*\d+/gi, '')
     .replace(/\bCOMMENT\s*=?\s*\u0001\d+\u0001/gi, '')
-    .replace(new RegExp(`(\\w+)\\s+(${INTS})(\\s*\\(\\s*\\d+\\s*\\))?(\\s+UNSIGNED)?([^,()]*?)\\s+AUTO_INCREMENT\\b`, 'gi'), (m, col, ty, p, u, rest) => `${col} ${/^big/i.test(ty) ? 'BIGSERIAL' : 'SERIAL'}${rest}`)
+    .replace(new RegExp(`(\\w+)\\s+(${INTS})(\\s*\\(\\s*\\d+\\s*\\))?(\\s+UNSIGNED)?([^,()]*?)\\s+AUTO_INCREMENT\\b`, 'gi'), (m, col, ty, p, u, rest) => { if (u) markU(col); return `${col} ${/^big/i.test(ty) ? 'BIGSERIAL' : 'SERIAL'}${rest}`; })
     .replace(/\bAUTO_INCREMENT\b/gi, '')
-    .replace(new RegExp(`(\\w+)\\s+(${INTS}|DECIMAL|NUMERIC|FLOAT|DOUBLE|REAL)(\\s*\\([^)]*\\))?\\s+UNSIGNED(\\s+ZEROFILL)?`, 'gi'), (m, col, ty, p) => `${col} ${ty}${p || ''} CHECK (${col} >= 0)`)
+    .replace(new RegExp(`(\\w+)\\s+(${INTS}|DECIMAL|NUMERIC|FLOAT|DOUBLE|REAL)(\\s*\\([^)]*\\))?\\s+UNSIGNED(\\s+ZEROFILL)?`, 'gi'), (m, col, ty, p) => { markU(col); return `${col} ${ty}${p || ''} CHECK (${col} >= 0)`; })
     .replace(/\bTINYINT\s*\(\s*1\s*\)/gi, 'SMALLINT')
     .replace(/\bTINYINT\b/gi, 'SMALLINT')
     .replace(/\bMEDIUMINT\b/gi, 'INTEGER')
@@ -829,6 +840,8 @@ function hintFor(msg, src){
   }
   if (/at or near "\d{3}"/.test(msg) || /\d \d{3}\b/.test(src)) tips.push("En SQL, un nombre s'écrit sans espace : 1100 et non 1 100.");
   if (/INSERT has more expressions than target columns/i.test(msg)) tips.push("Trop de valeurs par rapport aux colonnes. Attention : en SQL, la virgule sépare les valeurs, et un nombre décimal s'écrit avec un point (0.1, pas 0,1).");
+  if (/ERROR 1826|ERROR 3822/.test(msg)) tips.push("En MySQL, deux contraintes ne peuvent pas porter le même nom dans toute la base, même dans deux tables différentes. Donnez-leur des noms différents (par exemple fk_possession_partie), ou ne les nommez pas.");
+  if (/ERROR 3780/.test(msg)) tips.push("En MySQL, une clé étrangère doit avoir exactement le même type que la colonne qu'elle référence : INT avec INT, BIGINT avec BIGINT, et UNSIGNED des deux côtés ou d'aucun.");
   if (/must appear in the GROUP BY clause/i.test(msg)) tips.push("Toutes les colonnes du SELECT qui ne sont pas dans une fonction (SUM, COUNT…) doivent apparaître dans le GROUP BY.");
   if (/already exists/i.test(msg)) tips.push("Le script est rejoué sur une base vide : vérifiez que vous ne créez pas deux fois le même objet dans le script.");
   return tips;
@@ -853,13 +866,21 @@ async function runScript(){
   try {
     await resetDb();
     const my = MODE === 'mysql';
+    MYSQL_UNSIGNED.clear();
     for (const st of splitSql(src, my)){
       const t = st.sql.replace(/--[^\n]*|\/\*[\s\S]*?\*\//g, '').replace(my ? /#[^\n]*/g : /$^/, '').trim();
       if (!t || t === ';') continue;
       if (/^\\/.test(t) || /^use\s/i.test(t) || (my && /^set\s/i.test(t))){ run.meta.push(st.line); continue; }
       const sql = my ? mysqlToPg(st.sql) : st.sql;
       try {
-        const res = await db.exec(sql); run.count++;
+        let res;
+        if (my && /^\s*(create|alter)\s+table\b/i.test(sql)){
+          // règles propres à MySQL, vérifiées dans une transaction pour annuler l'instruction si elles ne sont pas respectées
+          await db.exec('BEGIN');
+          try { res = await db.exec(sql); const v = await mysqlRules(); if (v) throw new Error(v); await db.exec('COMMIT'); }
+          catch(err){ try { await db.exec('ROLLBACK'); } catch {} throw err; }
+        } else res = await db.exec(sql);
+        run.count++;
         if (my && /^\s*(insert|replace)\b/i.test(sql.replace(/^\s*(--[^\n]*\n\s*)*/, ''))) await syncCounters();
         const last = res[res.length - 1];
         if (last && last.fields && last.fields.length) run.results.push({ line: st.line, res: last });
@@ -871,7 +892,7 @@ async function runScript(){
   const before = LEVEL;
   LEVEL = lastReport.level;
   await scoreOnLevel(LEVEL);
-  lastRun = run; crash = null; succesFail = new Set();
+  lastRun = run; crash = null; succesFail = new Map();
   await resync();
   if (booted && LEVEL > before){
     setMood('happy', 6000);
@@ -890,6 +911,28 @@ async function syncCounters(){
       FROM information_schema.columns c WHERE c.table_schema = 'public' AND c.table_name IN (SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE') LOOP
       IF r.seq IS NOT NULL THEN EXECUTE format('SELECT max(%I) FROM %I', r.col, r.t) INTO m; IF m IS NOT NULL THEN PERFORM setval(r.seq, m); END IF; END IF;
     END LOOP; END $$;`); } catch {}
+}
+
+/* Deux règles de MySQL que PostgreSQL n'applique pas */
+async function mysqlRules(){
+  const dup = await q(`select c.conname::text as n, min(c.contype::text) as k from pg_constraint c join pg_namespace s on s.oid = c.connamespace
+    where s.nspname = 'public' and c.contype in ('f','c') group by c.conname having count(*) > 1`);
+  if (dup.length) return dup[0].k === 'f'
+    ? `ERROR 1826: Duplicate foreign key constraint name '${dup[0].n}'`
+    : `ERROR 3822: Duplicate check constraint name '${dup[0].n}'`;
+  const fks = await q(`select c.conname::text as n, t.relname::text as t, a.attname::text as col, format_type(a.atttypid, a.atttypmod) as ty,
+      rt.relname::text as rt, ra.attname::text as rcol, format_type(ra.atttypid, ra.atttypmod) as rty
+    from pg_constraint c join pg_class t on t.oid = c.conrelid join pg_namespace s on s.oid = t.relnamespace
+    join pg_attribute a on a.attrelid = c.conrelid and a.attnum = c.conkey[1]
+    join pg_class rt on rt.oid = c.confrelid join pg_attribute ra on ra.attrelid = c.confrelid and ra.attnum = c.confkey[1]
+    where s.nspname = 'public' and c.contype = 'f'`);
+  const base = ty => /^(character|text)/.test(ty) ? 'texte' : ty.replace(/\(\d+\)$/, m => /^(timestamp|time)/.test(ty) ? '' : m);
+  for (const f of fks){
+    const uA = MYSQL_UNSIGNED.has(`${f.t}.${f.col}`), uB = MYSQL_UNSIGNED.has(`${f.rt}.${f.rcol}`);
+    if (base(f.ty) !== base(f.rty) || uA !== uB)
+      return `ERROR 3780: Referencing column '${f.col}' and referenced column '${f.rcol}' in foreign key constraint '${f.n}' are incompatible.`;
+  }
+  return null;
 }
 
 async function evaluate(){
@@ -1093,7 +1136,7 @@ async function tryLocked(kind){
   const [show, sql] = map[kind]; const m = await tryQuery(sql);
   setCrash(show, 'ERROR: ' + (m || "la table existe mais n'est pas encore conforme au cahier des charges"));
 }
-let succesFail = new Set();
+let succesFail = new Map();
 let checkingSucces = false;
 async function checkSucces(){
   // jamais pendant l'exécution du script (les tests ouvrent des transactions annulées ensuite)
@@ -1109,7 +1152,7 @@ async function checkSuccesNow(){
     catch(e){
       // Si c'est un doublon, le succès est déjà en base : on l'affiche. Sinon on montre l'erreur de la base.
       if (e.code === '23505'){ G.succes.push(s.code); renderSucces(); }
-      else if (!succesFail.has(s.code)){ succesFail.add(s.code); setCrash(`INSERT INTO succes_obtenu (partie_id, succes_code) VALUES (${G.partieId}, '${s.code}');`, 'ERROR: ' + e.message); }
+      else if (!succesFail.has(s.code)){ succesFail.set(s.code, e.message); renderSucces(); setCrash(`INSERT INTO succes_obtenu (partie_id, succes_code) VALUES (${G.partieId}, '${s.code}');`, 'ERROR: ' + e.message); }
     }
   }
 }
@@ -1348,7 +1391,7 @@ function renderSucces(){
   const el = $('#succes'); if (!el) return;
   if (!has(7)){ el.innerHTML = `<div class="trybox"><p>Aucun badge pour l'instant.</p><button class="pbtn ghost" data-try="succes">VOIR MES SUCCÈS</button></div>`; return; }
   $('#succ-sub').textContent = `${G.succes.length} / ${CAT.succes.length}`;
-  el.innerHTML = `<div class="badges">${CAT.succes.map(s => `<div class="badge ${G.succes.includes(s.code) ? 'got' : ''}"><b>${esc(s.nom)}</b>${esc(s.description)}</div>`).join('')}</div>`;
+  el.innerHTML = `<div class="badges">${CAT.succes.map(s => `<div class="badge ${G.succes.includes(s.code) ? 'got' : succesFail.has(s.code) ? 'fail' : ''}"><b>${esc(s.nom)}</b>${esc(s.description)}${succesFail.has(s.code) && !G.succes.includes(s.code) ? `<span class="why">💥 Gagné, mais ta base refuse de l'enregistrer : ${esc(succesFail.get(s.code))}</span>` : ''}</div>`).join('')}</div>`;
 }
 let lastRank = null;
 function trackRank(i){
